@@ -1,0 +1,90 @@
+{
+  "projectType": "framework",
+  "projectName": "Django SuperApp",
+  "projectDescription": "A modular Django framework for building applications faster with pre-built standalone apps and automatic integration.",
+  "theme": "mint",
+  "primaryColor": "#0C4B33",
+  "lightColor": "#44B78B",
+  "darkColor": "#092E1F",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/architecture",
+              "concepts/app-system",
+              "concepts/settings-integration",
+              "concepts/url-integration"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/creating-apps",
+              "guides/admin-integration",
+              "guides/templates",
+              "guides/best-practices"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "CLI Reference",
+        "groups": [
+          {
+            "group": "Commands",
+            "pages": [
+              "cli/overview",
+              "cli/bootstrap-project",
+              "cli/bootstrap-app",
+              "cli/pull-template",
+              "cli/push-template"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Python API",
+            "pages": [
+              "api/settings",
+              "api/urls",
+              "api/apps"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Modular app architecture with automatic discovery",
+    "Pre-built standalone apps with settings and URL integration",
+    "CLI tool for rapid project and app scaffolding",
+    "Template-based project generation using Copier",
+    "Automatic integration of app-specific requirements",
+    "Django Unfold admin integration support"
+  ],
+  "publicApiSurface": [
+    "django_superapp bootstrap-project",
+    "django_superapp bootstrap-app",
+    "django_superapp pull-template",
+    "django_superapp push-template",
+    "extend_superapp_settings(main_settings, superapp_apps)",
+    "extend_with_superapp_urlpatterns(main_urlpatterns, superapp_apps)",
+    "extend_superapp_urlpatterns(main_urlpatterns, package)",
+    "extend_superapp_admin_urlpatterns(main_admin_urlpatterns, package)"
+  ]
+}
