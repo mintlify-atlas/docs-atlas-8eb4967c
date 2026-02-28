@@ -1,0 +1,350 @@
+---
+title: push-template
+description: Push local changes back to the remote template repository
+---
+
+## Overview
+
+The `push-template` command allows you to contribute improvements from your local project back to the remote template repository. It creates a fork, syncs your changes, and helps you create a pull request.
+
+<Warning>
+  This command requires the GitHub CLI (`gh`) and `rsync` to be installed on your system.
+</Warning>
+
+## Syntax
+
+```bash
+django_superapp push-template TARGET_DIRECTORY
+```
+
+## Parameters
+
+<ParamField path="TARGET_DIRECTORY" type="string" required>
+  The directory of the project or app whose changes you want to push to the template. Must have been created with `bootstrap-project` or `bootstrap-app`.
+</ParamField>
+
+## Prerequisites
+
+### GitHub CLI
+
+Install the GitHub CLI:
+
+```bash
+brew install gh
+```
+
+Authenticate with GitHub:
+
+```bash
+gh auth login
+```
+
+### rsync
+
+Verify rsync is installed (usually pre-installed on Unix systems):
+
+```bash
+rsync --version
+```
+
+## How It Works
+
+The `push-template` command follows this workflow:
+
+1. **Reads template metadata** from `.copier-answers.yml` to identify the source repository
+2. **Creates a temporary fork** of the template repository using `gh repo fork`
+3. **Syncs your local changes** to the fork using `rsync`, respecting exclusions from `copier.yml`
+4. **Opens the fork** in GitHub Desktop (if installed) for you to review and commit changes
+5. **Prompts for confirmation** after you've pushed your commits
+6. **Creates a pull request** using `gh pr create --web --fill`
+7. **Cleans up** the temporary fork directory
+
+## Workflow Steps
+
+### Step 1: Prepare Your Changes
+
+Ensure your local changes are ready:
+
+```bash
+# Review your changes
+git status
+git diff
+
+# Test your changes
+python manage.py test
+```
+
+### Step 2: Run push-template
+
+```bash
+django_superapp push-template .
+```
+
+### Step 3: Review and Commit
+
+The command will:
+- Fork the template repository to a temporary directory
+- Sync your changes to the fork
+- Open the fork in GitHub Desktop (if available)
+
+Review the synced changes and commit them:
+
+```bash
+git add .
+git commit -m "Add feature X to improve Y"
+git push origin main
+```
+
+<Warning>
+  **Do not commit sensitive information!** The command displays this warning:
+  
+  "Do not commit sensitive information to the remote repository!"
+  
+  Review carefully for:
+  - API keys and secrets
+  - Database credentials  
+  - Personal data
+  - Environment-specific configurations
+</Warning>
+
+### Step 4: Confirm Push
+
+After pushing your commits, the command will prompt:
+
+```
+Have you pushed your commits to the remote repository? [y/N]:
+```
+
+Type `y` to continue.
+
+### Step 5: Create Pull Request
+
+The command opens your browser to create a pull request with pre-filled information.
+
+## Examples
+
+### Push Project Changes
+
+Contribute improvements from your project:
+
+```bash
+django_superapp push-template .
+```
+
+### Push App Changes
+
+Share app-level improvements:
+
+```bash
+cd superapp/apps/my-app
+django_superapp push-template .
+```
+
+### Push from Specific Path
+
+```bash
+django_superapp push-template /path/to/my-project
+```
+
+## File Synchronization
+
+The command syncs files using `rsync` with the following behavior:
+
+### Automatically Excluded
+
+These files are always excluded from syncing:
+
+- `.DS_Store`
+- `venv/`
+- `superapp_fork/`
+- `.git/`
+- `.copier-answers.yml`
+- `{{_copier_conf.answers_file}}.jinja`
+
+### Copier Configuration Exclusions
+
+Additional exclusions from `copier.yml`:
+
+- Files matching patterns in `_exclude`
+- Files matching patterns in `_rsync_exclude`
+- Files prefixed with `!` are explicitly included despite other exclusions
+
+### Example copier.yml
+
+```yaml
+_exclude:
+  - "*.pyc"
+  - "__pycache__/"
+  - "local_settings.py"
+  
+_rsync_exclude:
+  - "media/"
+  - "staticfiles/"
+  - "!important_file.py"  # Include this despite other rules
+```
+
+## Error Handling
+
+### GitHub CLI Not Installed
+
+```
+Error: gh is not installed. Please install it before running this command using `brew install gh`.
+```
+
+**Solution**: Install the GitHub CLI:
+```bash
+brew install gh
+gh auth login
+```
+
+### rsync Not Installed
+
+```
+Error: rsync is not installed. Please install it before running this command.
+```
+
+**Solution**: Install rsync (if not pre-installed):
+```bash
+# macOS
+brew install rsync
+
+# Ubuntu/Debian
+sudo apt-get install rsync
+```
+
+### No Remote Repository Configured
+
+```
+Error: The target directory does not have a remote repository configured.
+```
+
+**Solution**: The directory must have been created with `bootstrap-project` or `bootstrap-app` and have a `.copier-answers.yml` file with template information.
+
+### User Aborted
+
+If you select `N` when asked if you've pushed your commits:
+
+```
+Aborted!
+```
+
+The command cleans up and exits. You can run it again after pushing your commits.
+
+## Best Practices
+
+### 1. Create Focused Changes
+
+Make small, focused contributions:
+
+```bash
+# Bad: Mix many unrelated changes
+git commit -m "Fix bug, add feature, update docs, refactor code"
+
+# Good: Separate commits for each change
+git commit -m "Fix authentication bug in middleware"
+```
+
+### 2. Document Your Changes
+
+Write clear commit messages and PR descriptions:
+
+```bash
+git commit -m "Add email validation to user registration
+
+- Validates email format using Django validators
+- Adds custom error messages
+- Includes tests for edge cases"
+```
+
+### 3. Test Before Pushing
+
+Always test your changes:
+
+```bash
+python manage.py test
+python manage.py check
+flake8 .
+```
+
+### 4. Review Sensitive Data
+
+Before committing to the fork, check for:
+
+```bash
+# Search for potential secrets
+grep -r "API_KEY" .
+grep -r "SECRET" .
+grep -r "PASSWORD" .
+
+# Review environment files
+cat .env
+cat local_settings.py
+```
+
+### 5. Coordinate with Template Maintainers
+
+For large changes:
+- Open an issue first to discuss
+- Follow the template's contribution guidelines
+- Be responsive to review feedback
+
+## Common Use Cases
+
+### Contributing Bug Fixes
+
+Found and fixed a bug in the template?
+
+```bash
+# Fix the bug in your project
+# Test the fix
+python manage.py test
+
+# Push to template
+django_superapp push-template .
+```
+
+### Sharing New Features
+
+Added a useful feature others might benefit from?
+
+```bash
+# Develop and test the feature
+# Document the feature
+
+# Push to template
+django_superapp push-template .
+```
+
+### Improving Documentation
+
+Enhanced docstrings or added documentation?
+
+```bash
+django_superapp push-template .
+```
+
+## Cleanup
+
+The command automatically cleans up the temporary fork directory, even if errors occur:
+
+```
+Cleaning up...
+```
+
+This happens in a `finally` block to ensure cleanup runs regardless of success or failure.
+
+## Related Commands
+
+<CardGroup cols={2}>
+  <Card title="pull-template" icon="download" href="/cli/pull-template">
+    Update your project with template changes
+  </Card>
+  
+  <Card title="bootstrap-project" icon="folder-plus" href="/cli/bootstrap-project">
+    Create a new project from a template
+  </Card>
+</CardGroup>
+
+## Source Reference
+
+Implementation: [main.py:80-123](https://github.com/django-superapp/django-superapp/blob/main/src/django_superapp/cli/main.py#L80-L123)

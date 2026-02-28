@@ -1,0 +1,121 @@
+---
+title: CLI Overview
+description: Introduction to the django_superapp command-line interface
+---
+
+## Introduction
+
+The `django_superapp` CLI is a command-line tool for bootstrapping and managing Django SuperApp projects and applications. It provides commands to create new projects, add apps, and synchronize templates with remote repositories.
+
+## Installation
+
+The CLI is installed automatically when you install the `django-superapp` package:
+
+```bash
+pip install django-superapp
+```
+
+After installation, the `django_superapp` command will be available in your terminal.
+
+## Prerequisites
+
+Some commands require additional tools to be installed:
+
+- **GitHub CLI (`gh`)**: Required for `push-template` command
+  ```bash
+  brew install gh
+  ```
+
+- **rsync**: Required for `push-template` command (usually pre-installed on Unix systems)
+
+## Available Commands
+
+The django_superapp CLI provides the following commands:
+
+<CardGroup cols={2}>
+  <Card title="bootstrap-project" icon="folder-plus" href="/cli/bootstrap-project">
+    Create a new SuperApp project from a template repository
+  </Card>
+  
+  <Card title="bootstrap-app" icon="puzzle-piece" href="/cli/bootstrap-app">
+    Create a new app inside an existing SuperApp project
+  </Card>
+  
+  <Card title="pull-template" icon="download" href="/cli/pull-template">
+    Update local project with changes from the remote template
+  </Card>
+  
+  <Card title="push-template" icon="upload" href="/cli/push-template">
+    Push local changes back to the remote template repository
+  </Card>
+</CardGroup>
+
+## Command Structure
+
+All commands follow the standard CLI pattern:
+
+```bash
+django_superapp [COMMAND] [OPTIONS] [ARGUMENTS]
+```
+
+## Getting Help
+
+To see all available commands:
+
+```bash
+django_superapp --help
+```
+
+To get help for a specific command:
+
+```bash
+django_superapp [COMMAND] --help
+```
+
+## Common Workflows
+
+### Creating a New Project
+
+1. Bootstrap a new project:
+   ```bash
+   django_superapp bootstrap-project my-project
+   ```
+
+2. Navigate to the project:
+   ```bash
+   cd my-project
+   ```
+
+3. Add apps as needed:
+   ```bash
+   cd superapp/apps
+   django_superapp bootstrap-app my-app
+   ```
+
+### Updating from Template
+
+Keep your project synchronized with template updates:
+
+```bash
+django_superapp pull-template .
+```
+
+### Contributing Changes Back
+
+If you've made improvements you want to share:
+
+```bash
+django_superapp push-template .
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Bootstrap Project" icon="rocket" href="/cli/bootstrap-project">
+    Learn how to create a new SuperApp project
+  </Card>
+  
+  <Card title="Bootstrap App" icon="plus" href="/cli/bootstrap-app">
+    Learn how to add apps to your project
+  </Card>
+</CardGroup>

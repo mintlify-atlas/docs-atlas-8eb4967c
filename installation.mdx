@@ -1,0 +1,140 @@
+---
+title: 'Installation'
+description: 'Install Django SuperApp and get ready to build modular Django projects'
+---
+
+# Installation Guide
+
+This guide will walk you through installing Django SuperApp on your system.
+
+## Prerequisites
+
+Before installing Django SuperApp, ensure you have the following:
+
+- **Python 3.8 or higher** - Django SuperApp requires Python 3.8+
+- **Django 5.0.0 or higher** - Will be installed automatically with Django SuperApp
+- **pipx** - Recommended for installing Python CLI tools in isolated environments
+
+<Note>
+  Django SuperApp is compatible with Python 3.8, 3.9, and 3.10, and is built for Django 5.0+.
+</Note>
+
+## Installation Steps
+
+<Steps>
+  <Step title="Install pipx">
+    First, install pipx to manage Python command-line applications in isolated environments.
+    
+    **On macOS (using Homebrew):**
+    ```bash
+    brew install pipx
+    pipx ensurepath
+    ```
+    
+    **On Linux (using pip):**
+    ```bash
+    python3 -m pip install --user pipx
+    python3 -m pipx ensurepath
+    ```
+    
+    **On Windows (using pip):**
+    ```bash
+    py -m pip install --user pipx
+    py -m pipx ensurepath
+    ```
+    
+    <Warning>
+      After installing pipx, you may need to restart your terminal or run `source ~/.bashrc` (Linux) or `source ~/.zshrc` (macOS) for the PATH changes to take effect.
+    </Warning>
+  </Step>
+  
+  <Step title="Install Django SuperApp">
+    Install Django SuperApp using pipx:
+    
+    ```bash
+    pipx install django_superapp --force
+    ```
+    
+    The `--force` flag ensures you get the latest version, even if it's already installed.
+  </Step>
+  
+  <Step title="Verify Installation">
+    Verify that Django SuperApp is installed correctly:
+    
+    ```bash
+    django_superapp --help
+    ```
+    
+    You should see output showing the available commands:
+    
+    ```
+    Usage: django_superapp [OPTIONS] COMMAND [ARGS]...
+    
+    Commands:
+      bootstrap-app      Create an app inside the project.
+      bootstrap-project  Bootstrap a project into target directory.
+      pull-template      Update the local template with the remote changes.
+      push-template      Push the local changes to the remote template.
+    ```
+  </Step>
+</Steps>
+
+## What Gets Installed
+
+When you install Django SuperApp, you also get these dependencies:
+
+- **Django >= 5.0.0** - The web framework
+- **click >= 8.1.7** - For the CLI interface
+- **copier >= 9.2.0** - For template-based project generation
+- **sysrsync >= 1.1.1** - For syncing templates
+
+## Troubleshooting
+
+### Command Not Found
+
+If you get a `django_superapp: command not found` error after installation:
+
+1. Make sure you ran `pipx ensurepath` and restarted your terminal
+2. Check if pipx bin directory is in your PATH:
+   ```bash
+   echo $PATH | grep pipx
+   ```
+3. Manually add pipx bin directory to your PATH if needed:
+   ```bash
+   export PATH="$HOME/.local/bin:$PATH"
+   ```
+
+### Permission Denied
+
+If you encounter permission errors during installation:
+
+- **Don't use `sudo`** - pipx is designed to work without root privileges
+- Ensure you're installing with the `--user` flag if using pip directly
+- Check that you have write permissions to your home directory
+
+### Python Version Issues
+
+If you see errors about Python version compatibility:
+
+1. Check your Python version:
+   ```bash
+   python3 --version
+   ```
+2. Ensure it's 3.8 or higher
+3. If you have multiple Python versions, you may need to specify:
+   ```bash
+   python3.10 -m pipx install django_superapp --force
+   ```
+
+### Reinstallation
+
+To completely reinstall Django SuperApp:
+
+```bash
+pipx uninstall django_superapp
+pipx install django_superapp --force
+```
+
+## Next Steps
+
+Now that you have Django SuperApp installed, head over to the [Quick Start Guide](/quickstart) to create your first project!

@@ -1,0 +1,510 @@
+---
+title: Template System
+description: Use Copier templates to quickly scaffold projects and apps in Django SuperApp
+---
+
+Django SuperApp uses [Copier](https://copier.readthedocs.io/) for template management, allowing you to quickly scaffold projects and apps from template repositories.
+
+## Using Copier for Templates
+
+Copier is a library for rendering project templates. SuperApp leverages Copier to provide a powerful templating system with support for:
+
+- Template repositories hosted on GitHub
+- Dynamic template variables
+- Template updates and synchronization
+- Bidirectional template changes
+
+<Tip>
+  Copier templates support Jinja2 templating, allowing for powerful dynamic content generation based on user input.
+</Tip>
+
+## Template Repositories
+
+SuperApp maintains several official template repositories for common use cases.
+
+### Available Templates
+
+<CardGroup cols={2}>
+  <Card title="Default Project" icon="rocket">
+    Bootstrap a complete SuperApp project with best practices
+    
+    ```
+    https://github.com/django-superapp/
+    django-superapp-default-project
+    ```
+  </Card>
+  
+  <Card title="Sample App" icon="cube">
+    Create a basic app with standard structure
+    
+    ```
+    https://github.com/django-superapp/
+    django-superapp-sample-app
+    ```
+  </Card>
+  
+  <Card title="Admin Portal" icon="user-shield">
+    Add a complete admin portal with django-unfold
+    
+    ```
+    https://github.com/django-superapp/
+    django-superapp-admin-portal
+    ```
+  </Card>
+  
+  <Card title="Authentication" icon="lock">
+    Implement user authentication and management
+    
+    ```
+    https://github.com/django-superapp/
+    django-superapp-authentication
+    ```
+  </Card>
+</CardGroup>
+
+### Template Configuration
+
+Templates are configured in `superapp_templates.json`:
+
+```json superapp_templates.json
+{
+  "projects": {
+    "default": {
+      "name": "Default",
+      "description": "The default project",
+      "repo": "https://github.com/django-superapp/django-superapp-default-project.git",
+      "branch": "main",
+      "default": true
+    }
+  },
+  "apps": {
+    "sample_app": {
+      "name": "Sample App",
+      "description": "A sample app",
+      "repo": "https://github.com/django-superapp/django-superapp-sample-app.git",
+      "branch": "main"
+    },
+    "sample_app_2": {
+      "name": "Sample App 2",
+      "description": "A sample app 2",
+      "repo": "https://github.com/django-superapp/django-superapp-sample-app.git",
+      "branch": "main"
+    }
+  }
+}
+```
+
+## bootstrap-project Command
+
+Use `bootstrap-project` to create a new SuperApp project from a template.
+
+### Basic Usage
+
+```bash
+django_superapp bootstrap-project ./my_superapp
+```
+
+### Using a Custom Template
+
+```bash
+django_superapp bootstrap-project \
+    --template-repo https://github.com/your-org/your-template \
+    ./my_superapp
+```
+
+### Complete Project Setup Example
+
+```bash
+# Install django_superapp
+pipx install django_superapp --force
+
+# Bootstrap the project
+django_superapp bootstrap-project \
+    --template-repo https://github.com/django-superapp/django-superapp-default-project \
+    ./my_superapp
+
+cd my_superapp
+
+# Bootstrap admin portal app
+cd superapp/apps
+django_superapp bootstrap-app \
+    --template-repo https://github.com/django-superapp/django-superapp-admin-portal \
+    ./admin_portal
+cd ../../
+
+# Bootstrap authentication app
+cd superapp/apps
+django_superapp bootstrap-app \
+    --template-repo https://github.com/django-superapp/django-superapp-authentication \
+    ./authentication
+cd ../../
+
+# Start the project
+make setup-sample-env
+make start-docker
+```
+
+<Note>
+  The `bootstrap-project` command uses Copier under the hood to render the template with variables like `project_name` automatically set based on your target directory name.
+</Note>
+
+## bootstrap-app Command
+
+Use `bootstrap-app` to create a new app within your SuperApp project.
+
+### Basic Usage
+
+<Warning>
+  The `bootstrap-app` command must be run from inside the `superapp/apps` directory. Running it from any other location will result in an error.
+</Warning>
+
+```bash
+cd superapp/apps
+django_superapp bootstrap-app \
+    --template-repo https://github.com/django-superapp/django-superapp-sample-app \
+    ./my_app
+```
+
+### Template Variables
+
+The `bootstrap-app` command automatically provides the following variables to the template:
+
+- `app_name` - The name of the app (derived from the target directory)
+
+### Example: Creating Multiple Apps
+
+```bash
+cd superapp/apps
+
+# Create a blog app
+django_superapp bootstrap-app \
+    --template-repo https://github.com/your-org/blog-template \
+    ./blog
+
+# Create an e-commerce app
+django_superapp bootstrap-app \
+    --template-repo https://github.com/your-org/ecommerce-template \
+    ./shop
+
+# Create a notifications app
+django_superapp bootstrap-app \
+    --template-repo https://github.com/your-org/notifications-template \
+    ./notifications
+```
+
+## pull-template Command
+
+Use `pull-template` to update a local project or app with changes from its remote template repository.
+
+### Updating from Remote Template
+
+```bash
+# Update an app with latest template changes
+django_superapp pull-template ./superapp/apps/my_app
+```
+
+### How It Works
+
+The `pull-template` command:
+
+1. Reads the template configuration from `.copier-answers.yml`
+2. Fetches the latest version from the template repository
+3. Applies updates while preserving your local changes
+4. Uses the `--overwrite` flag to handle conflicts
+
+<Tip>
+  Run `pull-template` regularly to keep your apps in sync with template improvements and bug fixes.
+</Tip>
+
+### Example Workflow
+
+```bash
+# Initial app creation
+cd superapp/apps
+django_superapp bootstrap-app \
+    --template-repo https://github.com/django-superapp/django-superapp-sample-app \
+    ./my_app
+
+# ... time passes, template is updated ...
+
+# Pull latest template changes
+django_superapp pull-template ./superapp/apps/my_app
+
+# Review changes
+cd my_app
+git diff
+```
+
+## push-template Command
+
+Use `push-template` to contribute changes back to a template repository. This creates a fork, syncs your local changes, and helps you create a pull request.
+
+### Contributing Changes to Templates
+
+```bash
+django_superapp push-template ./superapp/apps/my_app
+```
+
+### How It Works
+
+<Steps>
+  <Step title="Fork the repository">
+    The command forks the template repository to your GitHub account using the GitHub CLI (`gh`)
+  </Step>
+  
+  <Step title="Sync directories">
+    Your local changes are synced to the forked repository, excluding files specified in the template's configuration
+  </Step>
+  
+  <Step title="Review changes">
+    The repository opens in GitHub Desktop (if available) for you to review and commit changes
+  </Step>
+  
+  <Step title="Create pull request">
+    After you push your changes, the command helps create a pull request using `gh pr create`
+  </Step>
+</Steps>
+
+### Prerequisites
+
+The `push-template` command requires:
+
+- [GitHub CLI (`gh`)](https://cli.github.com/) installed and authenticated
+- [rsync](https://rsync.samba.org/) installed
+- (Optional) [GitHub Desktop](https://desktop.github.com/) for easier commit workflow
+
+<Warning>
+  Do not commit sensitive information to template repositories! The command will warn you before proceeding.
+</Warning>
+
+### Example Workflow
+
+```bash
+# Make improvements to your app
+cd superapp/apps/my_app
+# ... edit files, add features ...
+
+# Push changes back to template
+django_superapp push-template ./superapp/apps/my_app
+
+# Follow the prompts:
+# 1. Review changes in GitHub Desktop
+# 2. Commit your improvements
+# 3. Push to your fork
+# 4. Confirm to create PR
+```
+
+## Creating Custom Templates
+
+You can create your own template repositories for organization-specific patterns.
+
+### Template Structure
+
+A basic template repository structure:
+
+```
+my-template/
+├── copier.yml                    # Template configuration
+├── {{project_name}}/            # Template files
+│   ├── __init__.py
+│   ├── settings.py.jinja
+│   ├── urls.py.jinja
+│   └── models.py.jinja
+└── README.md
+```
+
+### Template Configuration (copier.yml)
+
+```yaml copier.yml
+_templates_suffix: .jinja
+
+_exclude:
+  - "copier.yml"
+  - "~*"
+  - "*.py[co]"
+  - "__pycache__"
+  - ".git"
+  - ".DS_Store"
+
+_rsync_exclude:
+  - "*.pyc"
+  - ".git"
+  - "venv/"
+  - "!important_file.txt"  # Include despite glob match
+
+# Template questions
+project_name:
+  type: str
+  help: What is your project name?
+
+app_name:
+  type: str
+  help: What is your app name?
+
+use_celery:
+  type: bool
+  help: Include Celery for background tasks?
+  default: false
+
+python_version:
+  type: str
+  help: Python version
+  default: "3.11"
+  choices:
+    - "3.9"
+    - "3.10"
+    - "3.11"
+    - "3.12"
+```
+
+### Template Files with Jinja2
+
+Use Jinja2 syntax in your template files:
+
+```python settings.py.jinja
+def extend_superapp_settings(main_settings):
+    main_settings['INSTALLED_APPS'] += ['superapp.apps.{{ app_name }}']
+    
+    {% if use_celery %}
+    # Celery configuration
+    main_settings['CELERY_BROKER_URL'] = 'redis://localhost:6379/0'
+    main_settings['CELERY_RESULT_BACKEND'] = 'redis://localhost:6379/0'
+    {% endif %}
+    
+    # App-specific settings
+    main_settings['{{ app_name | upper }}_CONFIG'] = {
+        'enabled': True,
+        'python_version': '{{ python_version }}',
+    }
+```
+
+### Publishing Your Template
+
+1. Create a GitHub repository for your template
+2. Push your template files
+3. Use the repository URL with bootstrap commands:
+
+```bash
+django_superapp bootstrap-app \
+    --template-repo https://github.com/your-org/your-template \
+    ./my_app
+```
+
+## Template Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Version Control" icon="code-branch">
+    Keep templates in Git with semantic versioning and branches for different versions
+  </Card>
+  
+  <Card title="Documentation" icon="book">
+    Include comprehensive README with setup instructions and variable descriptions
+  </Card>
+  
+  <Card title="Validation" icon="check">
+    Validate template variables and provide sensible defaults
+  </Card>
+  
+  <Card title="Maintenance" icon="wrench">
+    Regularly update templates with improvements and security fixes
+  </Card>
+</CardGroup>
+
+### Template Variable Naming
+
+```yaml
+# Good: Clear, descriptive names
+app_name: str
+database_engine: str
+enable_api: bool
+
+# Avoid: Unclear abbreviations
+an: str
+dbe: str
+api: bool
+```
+
+### Exclude Patterns
+
+```yaml
+_exclude:
+  # Development files
+  - "*.py[co]"
+  - "__pycache__"
+  - ".pytest_cache"
+  
+  # Editor files
+  - "*.swp"
+  - "*~"
+  - ".vscode"
+  - ".idea"
+  
+  # OS files
+  - ".DS_Store"
+  - "Thumbs.db"
+  
+  # Version control
+  - ".git"
+  - ".gitignore"
+```
+
+## Troubleshooting
+
+### Template Not Found
+
+If you encounter a template not found error:
+
+```bash
+# Verify the repository URL is correct
+git ls-remote https://github.com/your-org/your-template
+
+# Try with explicit branch
+django_superapp bootstrap-app \
+    --template-repo https://github.com/your-org/your-template@main \
+    ./my_app
+```
+
+### Permission Errors
+
+For GitHub authentication issues:
+
+```bash
+# Login to GitHub CLI
+gh auth login
+
+# Verify authentication
+gh auth status
+```
+
+### Template Update Conflicts
+
+If `pull-template` shows conflicts:
+
+```bash
+# Review the changes
+git diff
+
+# Manually resolve conflicts, then
+git add .
+git commit -m "Merged template updates"
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Creating Apps" icon="plus" href="/guides/creating-apps">
+    Use templates to create new apps
+  </Card>
+  
+  <Card title="Admin Integration" icon="user-shield" href="/guides/admin-integration">
+    Bootstrap admin configurations with templates
+  </Card>
+  
+  <Card title="Best Practices" icon="star" href="/guides/best-practices">
+    Follow template development best practices
+  </Card>
+  
+  <Card title="Copier Documentation" icon="external-link" href="https://copier.readthedocs.io/">
+    Learn more about Copier
+  </Card>
+</CardGroup>

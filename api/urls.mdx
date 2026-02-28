@@ -1,0 +1,270 @@
+---
+title: 'URLs API'
+description: 'API reference for Django SuperApp URL pattern management'
+---
+
+## Overview
+
+The URLs API provides functions to dynamically discover and extend URL patterns from SuperApp modules. This allows each SuperApp to define its own URL routes that are automatically integrated into your Django project's URL configuration.
+
+## extend_superapp_urlpatterns
+
+Automatically discovers and extends URL patterns from all SuperApp modules within a package.
+
+```python
+from django_superapp.urls import extend_superapp_urlpatterns
+
+extend_superapp_urlpatterns(main_urlpatterns, package)
+```
+
+### Parameters
+
+<ParamField path="main_urlpatterns" type="list" required>
+  The main Django URL patterns list to be extended. This is typically your project's `urlpatterns` list from `urls.py`.
+</ParamField>
+
+<ParamField path="package" type="module" required>
+  The package containing your SuperApp modules. The function will iterate through all modules in this package to discover URL patterns.
+</ParamField>
+
+### Implementation Details
+
+The function performs the following operations (lines 7-19 of `urls.py`):
+
+1. **Module Discovery**: Uses `pkgutil.iter_modules()` to iterate through all modules in the package
+2. **URLs Module Loading**: For each module, attempts to import a `urls` submodule (e.g., `package.module_name.urls`)
+3. **Graceful Fallback**: If a module doesn't have a urls submodule, it's silently skipped
+4. **Extension Hook**: If the urls module has an `extend_superapp_urlpatterns` function, it's called with the main urlpatterns list
+5. **Error Handling**: Re-raises any import errors that aren't related to missing urls modules
+
+### Return Value
+
+<ResponseField name="return" type="None">
+  This function modifies the `main_urlpatterns` list in-place and does not return a value.
+</ResponseField>
+
+### Usage Example
+
+```python urls.py
+from django.contrib import admin
+from django.urls import path
+import superapp_apps
+from django_superapp.urls import extend_superapp_urlpatterns
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+]
+
+# Extend with SuperApp URL patterns
+extend_superapp_urlpatterns(urlpatterns, superapp_apps)
+```
+
+---
+
+## extend_superapp_admin_urlpatterns
+
+<Note type="warning">
+  This function is **deprecated** and will be removed in a future version. Admin URL patterns will be generated in `admin_portal/sites.py` instead.
+</Note>
+
+Automatically discovers and extends admin URL patterns from all SuperApp modules.
+
+```python
+from django_superapp.urls import extend_superapp_admin_urlpatterns
+
+extend_superapp_admin_urlpatterns(main_admin_urlpatterns, package)
+```
+
+### Parameters
+
+<ParamField path="main_admin_urlpatterns" type="list" required>
+  The main admin URL patterns list to be extended.
+</ParamField>
+
+<ParamField path="package" type="module" required>
+  The package containing your SuperApp modules.
+</ParamField>
+
+### Implementation Details
+
+The function performs similar operations to `extend_superapp_urlpatterns` (lines 22-34 of `urls.py`):
+
+1. **Module Discovery**: Iterates through all modules in the package
+2. **URLs Module Loading**: Attempts to import urls submodules
+3. **Admin Extension Hook**: Calls `extend_superapp_admin_urlpatterns` if present in the urls module
+
+### Return Value
+
+<ResponseField name="return" type="None">
+  This function modifies the `main_admin_urlpatterns` list in-place and does not return a value.
+</ResponseField>
+
+---
+
+## extend_with_superapp_urlpatterns
+
+Convenience function that combines both regular and admin URL pattern extension.
+
+```python
+from django_superapp.urls import extend_with_superapp_urlpatterns
+
+extend_with_superapp_urlpatterns(main_urlpatterns, superapp_apps)
+```
+
+### Parameters
+
+<ParamField path="main_urlpatterns" type="list" required>
+  The main Django URL patterns list to be extended.
+</ParamField>
+
+<ParamField path="superapp_apps" type="module" required>
+  The package containing your SuperApp modules.
+</ParamField>
+
+### Implementation Details
+
+This function is a wrapper that calls both (lines 40-43 of `urls.py`):
+
+1. `extend_superapp_urlpatterns(main_urlpatterns, superapp_apps)` - Extends regular URL patterns
+2. `extend_superapp_admin_urlpatterns(main_admin_urlpatterns, superapp_apps)` - Extends admin patterns (deprecated)
+
+<Note type="warning">
+  The admin URL patterns functionality in this function is deprecated and will be removed soon.
+</Note>
+
+### Return Value
+
+<ResponseField name="return" type="None">
+  This function modifies the `main_urlpatterns` list in-place and does not return a value.
+</ResponseField>
+
+### Usage Example
+
+```python urls.py
+from django.contrib import admin
+from django.urls import path
+import superapp_apps
+from django_superapp.urls import extend_with_superapp_urlpatterns
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('', include('core.urls')),
+]
+
+# Extend with all SuperApp URL patterns
+extend_with_superapp_urlpatterns(urlpatterns, superapp_apps)
+```
+
+---
+
+## SuperApp URL Structure
+
+Each SuperApp module can define its own URL patterns by creating a `urls.py` file:
+
+```python superapp_apps/my_app/urls.py
+from django.urls import path, include
+from . import views
+
+def extend_superapp_urlpatterns(main_urlpatterns):
+    """Extend the main URL patterns with app-specific routes."""
+    
+    app_patterns = [
+        path('my-app/', views.index, name='my_app_index'),
+        path('my-app/api/', include('superapp_apps.my_app.api.urls')),
+    ]
+    
+    # Add patterns to the main urlpatterns list
+    main_urlpatterns.extend(app_patterns)
+
+def extend_superapp_admin_urlpatterns(main_admin_urlpatterns):
+    """Extend admin URL patterns (deprecated)."""
+    
+    admin_patterns = [
+        path('my-app-admin/', views.admin_view, name='my_app_admin'),
+    ]
+    
+    main_admin_urlpatterns.extend(admin_patterns)
+```
+
+## Best Practices
+
+### 1. Namespacing URLs
+
+```python
+def extend_superapp_urlpatterns(main_urlpatterns):
+    from django.urls import path, include
+    
+    main_urlpatterns.append(
+        path('my-app/', include((
+            [
+                path('', views.index, name='index'),
+                path('detail/<int:pk>/', views.detail, name='detail'),
+            ],
+            'my_app',  # Namespace
+        )))
+    )
+```
+
+### 2. API Versioning
+
+```python
+def extend_superapp_urlpatterns(main_urlpatterns):
+    from django.urls import path, include
+    
+    main_urlpatterns.extend([
+        path('api/v1/my-app/', include('superapp_apps.my_app.api.v1.urls')),
+        path('api/v2/my-app/', include('superapp_apps.my_app.api.v2.urls')),
+    ])
+```
+
+### 3. Conditional URL Registration
+
+```python
+def extend_superapp_urlpatterns(main_urlpatterns):
+    from django.conf import settings
+    from django.urls import path
+    from . import views
+    
+    # Only register debug URLs in development
+    if settings.DEBUG:
+        main_urlpatterns.append(
+            path('my-app/debug/', views.debug_view, name='my_app_debug')
+        )
+```
+
+## Example: Multiple SuperApps
+
+```python
+# Project structure:
+# superapp_apps/
+#   ├── auth_app/
+#   │   └── urls.py
+#   ├── api_app/
+#   │   └── urls.py
+#   └── dashboard/
+#       └── urls.py
+
+# In your main urls.py:
+from django.contrib import admin
+from django.urls import path
+import superapp_apps
+from django_superapp.urls import extend_with_superapp_urlpatterns
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+]
+
+# This will automatically discover and load URLs from:
+# - superapp_apps.auth_app.urls
+# - superapp_apps.api_app.urls
+# - superapp_apps.dashboard.urls
+extend_with_superapp_urlpatterns(urlpatterns, superapp_apps)
+```
+
+## Error Handling
+
+All URL extension functions handle errors consistently:
+
+- **Missing URLs Module**: If a SuperApp doesn't have a `urls.py` file, the module is skipped silently
+- **Import Errors**: Any import errors that aren't related to missing urls modules are re-raised
+- **Logging**: Uses Python's logging framework to track issues (via `logger` at module level)

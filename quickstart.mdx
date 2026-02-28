@@ -1,80 +1,281 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: 'Quick Start'
+description: 'Create your first Django SuperApp project in minutes with this step-by-step tutorial'
 ---
 
-## Get started in three steps
+# Quick Start Tutorial
 
-Get your documentation site running locally and make your first customization.
-
-### Step 1: Set up your local environment
-
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
-
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
+This tutorial will guide you through creating a complete Django SuperApp project with an admin portal and authentication system. By the end, you'll have a running Django application with a modern admin interface.
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  This tutorial assumes you have already [installed Django SuperApp](/installation). If not, please complete the installation first.
 </Note>
+
+## What You'll Build
+
+In this tutorial, you'll create:
+
+- A Django SuperApp project with modular architecture
+- An admin portal with Django Unfold integration
+- An authentication app with user management
+- A fully Dockerized development environment
+
+## Create Your First Project
+
+<Steps>
+  <Step title="Bootstrap the Project">
+    Create a new Django SuperApp project using the default template:
+    
+    ```bash
+    django_superapp bootstrap-project \
+        --template-repo https://github.com/django-superapp/django-superapp-default-project \
+        ./my_superapp
+    cd my_superapp
+    ```
+    
+    This command:
+    - Downloads the project template from GitHub
+    - Creates the base project structure
+    - Sets up the modular app architecture
+    - Configures `settings.py` to automatically discover apps
+    
+    <Tip>
+      You can use any GitHub repository as a template by changing the `--template-repo` URL. This allows you to create custom project templates for your organization.
+    </Tip>
+  </Step>
+  
+  <Step title="Add the Admin Portal App">
+    Navigate to the apps directory and bootstrap the admin portal:
+    
+    ```bash
+    cd superapp/apps
+    django_superapp bootstrap-app \
+        --template-repo https://github.com/django-superapp/django-superapp-admin-portal \
+        ./admin_portal
+    cd ../../
+    ```
+    
+    The admin portal app includes:
+    - Django Unfold admin interface
+    - Custom admin site configuration
+    - Pre-configured admin templates
+    - Admin-specific URL patterns
+    
+    <Warning>
+      The `bootstrap-app` command must be run from the `superapp/apps` directory. The CLI will check your current directory and raise an error if you're not in the correct location.
+    </Warning>
+  </Step>
+  
+  <Step title="Add the Authentication App">
+    Add user authentication functionality:
+    
+    ```bash
+    cd superapp/apps
+    django_superapp bootstrap-app \
+        --template-repo https://github.com/django-superapp/django-superapp-authentication \
+        ./authentication
+    cd ../../
+    ```
+    
+    The authentication app provides:
+    - User registration and login
+    - Password reset functionality
+    - User profile management
+    - Integration with Django's auth system
+  </Step>
+  
+  <Step title="Set Up Environment Variables">
+    Create your environment configuration file:
+    
+    ```bash
+    make setup-sample-env
+    ```
+    
+    This creates a `.env.local` file with default development settings. You can customize this file for your specific needs.
+  </Step>
+  
+  <Step title="Start Docker Containers">
+    Launch your application with Docker:
+    
+    ```bash
+    make start-docker
+    ```
+    
+    This command:
+    - Builds the Docker images
+    - Starts the web server and database
+    - Sets up networking between containers
+    - Exposes the application on port 8080
+  </Step>
+  
+  <Step title="Load Environment Variables">
+    Export the environment variables to your shell:
+    
+    ```bash
+    export $(cat .env.local | xargs)
+    ```
+    
+    This makes the configuration available to Django management commands.
+  </Step>
+  
+  <Step title="Run Database Migrations">
+    Apply all database migrations:
+    
+    ```bash
+    docker-compose exec web python3 manage.py migrate
+    ```
+    
+    This creates all necessary database tables for:
+    - Django core tables
+    - Admin portal models
+    - Authentication models
+    - Any other app-specific models
+  </Step>
+  
+  <Step title="Create a Superuser">
+    Create an admin account to access the admin portal:
+    
+    ```bash
+    docker-compose exec web python3 manage.py createsuperuser
+    ```
+    
+    Follow the prompts to enter:
+    - Username
+    - Email address
+    - Password (twice for confirmation)
+  </Step>
+  
+  <Step title="Access Your Application">
+    Open your browser and navigate to:
+    
+    ```
+    http://localhost:8080/
+    ```
+    
+    You should see your Django SuperApp running! Log in with the superuser credentials you just created.
+    
+    <img
+      src="https://django-superapp.bringes.io/assets/docs/admin-portal/admin-portal.png"
+      alt="Django SuperApp Admin Portal"
+    />
+  </Step>
+</Steps>
+
+## Understanding the Project Structure
+
+Your new Django SuperApp project has the following structure:
+
+```
+my_superapp/
+├── superapp/
+│   ├── apps/
+│   │   ├── admin_portal/      # Admin interface app
+│   │   │   ├── settings.py    # App-specific settings
+│   │   │   ├── urls.py        # App-specific URLs
+│   │   │   └── ...
+│   │   └── authentication/    # Authentication app
+│   │       ├── settings.py    # App-specific settings
+│   │       ├── urls.py        # App-specific URLs
+│   │       └── ...
+│   ├── settings.py            # Main settings (auto-discovers apps)
+│   └── urls.py                # Main URLs (auto-includes app URLs)
+├── docker-compose.yml
+├── Dockerfile
+├── manage.py
+└── requirements.txt
+```
+
+## How Automatic Discovery Works
+
+Django SuperApp automatically discovers and integrates your apps:
+
+### Settings Integration
+
+When you add a new app, Django SuperApp looks for a `settings.py` file with an `extend_superapp_settings()` function:
+
+```python
+# In your app's settings.py
+def extend_superapp_settings(main_settings):
+    # Add installed apps
+    main_settings.INSTALLED_APPS.append('your_app')
+    
+    # Modify settings
+    main_settings.CUSTOM_SETTING = 'value'
+```
+
+### URL Integration
+
+Similarly, for URLs, Django SuperApp looks for a `urls.py` file with an `extend_superapp_urlpatterns()` function:
+
+```python
+# In your app's urls.py
+def extend_superapp_urlpatterns(main_urlpatterns):
+    from django.urls import path
+    from . import views
+    
+    main_urlpatterns.append(
+        path('your-app/', views.index, name='your_app_index')
+    )
+```
+
+## Next Steps
+
+Congratulations! You've created your first Django SuperApp project. Here are some ideas for what to do next:
+
+<CardGroup cols={2}>
+  <Card title="Add More Apps" icon="plus">
+    Bootstrap additional apps for your specific features using `django_superapp bootstrap-app`
+  </Card>
+  
+  <Card title="Customize Templates" icon="paintbrush">
+    Modify your app templates and sync them back with `push-template`
+  </Card>
+  
+  <Card title="Deploy to Production" icon="rocket">
+    Configure your production environment and deploy your application
+  </Card>
+  
+  <Card title="Explore the Code" icon="code">
+    Dive into the generated code to understand how everything works together
+  </Card>
+</CardGroup>
+
+## Common Commands
+
+Here are some useful commands you'll use frequently:
+
+```bash
+# Start the development server
+make start-docker
+
+# Stop the containers
+docker-compose down
+
+# Run migrations
+docker-compose exec web python3 manage.py migrate
+
+# Create a new app
+cd superapp/apps && django_superapp bootstrap-app --template-repo <repo-url> ./app_name
+
+# Update an app from its template
+django_superapp pull-template ./superapp/apps/app_name
+
+# Run Django management commands
+docker-compose exec web python3 manage.py <command>
+
+# Access Django shell
+docker-compose exec web python3 manage.py shell
+
+# Run tests
+docker-compose exec web python3 manage.py test
+```
+
+## Getting Help
+
+If you encounter any issues:
+
+- Check the [GitHub repository](https://github.com/django-superapp/django-superapp) for documentation
+- Open an issue on [GitHub Issues](https://github.com/django-superapp/django-superapp/issues)
+- Review the official [Django SuperApp documentation](https://django-superapp.bringes.io)
+
+Happy building with Django SuperApp!

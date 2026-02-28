@@ -1,0 +1,128 @@
+---
+title: bootstrap-project
+description: Create a new Django SuperApp project from a template repository
+---
+
+## Overview
+
+The `bootstrap-project` command creates a new Django SuperApp project by copying a template repository into a target directory. This is the starting point for creating a new SuperApp-based application.
+
+## Syntax
+
+```bash
+django_superapp bootstrap-project [OPTIONS] TARGET_DIRECTORY
+```
+
+## Parameters
+
+<ParamField path="TARGET_DIRECTORY" type="string" required>
+  The directory where the new project will be created. The directory name will also be used as the default project name.
+</ParamField>
+
+## Options
+
+<ParamField path="--template-repo" type="string" default="https://github.com/django-superapp/django-superapp-default-project">
+  The GitHub repository URL to use as the project template. Must be a valid GitHub HTTPS or SSH URL.
+  
+  **Accepted formats:**
+  - HTTPS: `https://github.com/owner/repo`
+  - SSH: `git@github.com:owner/repo.git`
+</ParamField>
+
+## How It Works
+
+1. The command validates the template repository URL format
+2. Uses [Copier](https://copier.readthedocs.io/) to copy the template repository
+3. Sets the `project_name` variable to the basename of the target directory
+4. Creates the project structure in the specified location
+
+## Examples
+
+### Basic Usage
+
+Create a project using the default template:
+
+```bash
+django_superapp bootstrap-project my-project
+```
+
+This creates a new project in the `my-project` directory with `project_name` set to "my-project".
+
+### Custom Template Repository
+
+Use a custom template repository (HTTPS):
+
+```bash
+django_superapp bootstrap-project --template-repo https://github.com/myorg/custom-template my-project
+```
+
+### Custom Template with SSH
+
+Use SSH authentication for private repositories:
+
+```bash
+django_superapp bootstrap-project --template-repo git@github.com:myorg/private-template.git my-project
+```
+
+### Absolute Path
+
+Create a project in a specific location:
+
+```bash
+django_superapp bootstrap-project /path/to/my-project
+```
+
+## Validation
+
+The command validates the `--template-repo` option to ensure it's a valid GitHub URL:
+
+- **Valid HTTPS format**: `https://github.com/owner/repo`
+- **Valid SSH format**: `git@github.com:owner/repo.git`
+
+If the URL doesn't match these patterns, you'll receive an error:
+
+```
+Error: The repository URL must be a valid GitHub HTTPS or SSH URL.
+```
+
+## Template Variables
+
+The command automatically passes the following variables to the template:
+
+- `project_name`: Extracted from the basename of the target directory
+
+## After Bootstrapping
+
+Once your project is created, you can:
+
+1. Navigate to the project directory:
+   ```bash
+   cd my-project
+   ```
+
+2. Install dependencies (typically):
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. Add apps to your project:
+   ```bash
+   cd superapp/apps
+   django_superapp bootstrap-app my-app
+   ```
+
+## Related Commands
+
+<CardGroup cols={2}>
+  <Card title="bootstrap-app" icon="puzzle-piece" href="/cli/bootstrap-app">
+    Create apps inside your new project
+  </Card>
+  
+  <Card title="pull-template" icon="download" href="/cli/pull-template">
+    Update your project with template changes
+  </Card>
+</CardGroup>
+
+## Source Reference
+
+Implementation: [main.py:29-44](https://github.com/django-superapp/django-superapp/blob/main/src/django_superapp/cli/main.py#L29-L44)

@@ -1,0 +1,654 @@
+---
+title: Best Practices
+description: Follow best practices for building scalable and maintainable Django SuperApp applications
+---
+
+Django SuperApp combines Django's proven patterns with a modular architecture. Follow these best practices to build scalable, maintainable applications.
+
+## Key Principles
+
+<CardGroup cols={2}>
+  <Card title="Readability First" icon="book-open">
+    Prioritize code readability and maintainability. Follow PEP 8 compliance and Django conventions
+  </Card>
+  
+  <Card title="Modular Structure" icon="cubes">
+    Organize code using Django apps within SuperApp for clear separation and reuse
+  </Card>
+  
+  <Card title="Django Features" icon="shield-check">
+    Leverage built-in Django features. Avoid raw SQL, prefer Django ORM
+  </Card>
+  
+  <Card title="MVT Separation" icon="layer-group">
+    Follow strict Model-View-Template separation. Keep business logic in models/forms
+  </Card>
+</CardGroup>
+
+## App Organization
+
+### Directory Structure
+
+Maintain a consistent directory structure across all apps:
+
+```
+superapp/apps/my_app/
+├── __init__.py
+├── settings.py              # App settings integration
+├── urls.py                  # URL patterns
+├── requirements.txt         # App-specific dependencies
+├── models.py               # Database models
+├── views.py                # View logic (or views/ for large apps)
+├── forms.py                # Form definitions
+├── serializers.py          # DRF serializers (if using API)
+├── signals.py              # Signal handlers
+├── tasks.py                # Celery tasks
+├── admin/                  # Admin configurations
+│   ├── __init__.py
+│   ├── user.py
+│   └── product.py
+├── management/             # Management commands
+│   └── commands/
+│       └── my_command.py
+├── migrations/             # Database migrations
+├── templates/              # Templates
+│   └── my_app/
+│       └── index.html
+├── static/                 # Static files
+│   └── my_app/
+│       ├── css/
+│       ├── js/
+│       └── images/
+└── tests/                  # Tests
+    ├── __init__.py
+    ├── test_models.py
+    ├── test_views.py
+    └── test_api.py
+```
+
+<Tip>
+  For large apps, split `views.py` into a `views/` package with separate modules for different concerns (e.g., `views/api.py`, `views/public.py`, `views/admin.py`).
+</Tip>
+
+### Naming Conventions
+
+```python
+# Models: Singular, PascalCase
+class Product(models.Model):
+    pass
+
+# Views: Descriptive, snake_case for FBVs
+def product_list(request):
+    pass
+
+# Views: PascalCase for CBVs with descriptive suffix
+class ProductListView(ListView):
+    pass
+
+# URLs: Lowercase with hyphens
+path('product-list/', views.product_list, name='product_list')
+
+# App names: Lowercase with underscores
+superapp.apps.product_catalog
+```
+
+## Model Design
+
+### Keep Business Logic in Models
+
+```python
+# Good: Business logic in model methods
+class Order(models.Model):
+    total = models.DecimalField(max_digits=10, decimal_places=2)
+    discount = models.DecimalField(max_digits=10, decimal_places=2)
+    
+    def calculate_final_total(self):
+        """Calculate total after discount."""
+        return self.total - self.discount
+    
+    def can_be_cancelled(self):
+        """Check if order can be cancelled."""
+        return self.status in ['pending', 'processing']
+    
+    def cancel(self):
+        """Cancel the order."""
+        if not self.can_be_cancelled():
+            raise ValueError("Order cannot be cancelled")
+        self.status = 'cancelled'
+        self.save()
+
+# Bad: Business logic in views
+def cancel_order(request, order_id):
+    order = Order.objects.get(id=order_id)
+    if order.status in ['pending', 'processing']:
+        order.status = 'cancelled'
+        order.save()
+```
+
+### Use Django ORM Features
+
+```python
+# Good: Use select_related for foreign keys
+orders = Order.objects.select_related('customer', 'shipping_address').all()
+
+# Good: Use prefetch_related for reverse relations
+customers = Customer.objects.prefetch_related('orders').all()
+
+# Good: Use annotations
+from django.db.models import Count, Sum
+products = Product.objects.annotate(
+    order_count=Count('orderitem'),
+    total_sold=Sum('orderitem__quantity')
+)
+
+# Avoid: N+1 queries
+orders = Order.objects.all()
+for order in orders:
+    print(order.customer.name)  # Triggers query for each order
+```
+
+### Model Validation
+
+```python
+from django.core.exceptions import ValidationError
+
+class Product(models.Model):
+    name = models.CharField(max_length=200)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    stock = models.IntegerField()
+    
+    def clean(self):
+        """Validate model data."""
+        if self.price < 0:
+            raise ValidationError({'price': 'Price cannot be negative'})
+        
+        if self.stock < 0:
+            raise ValidationError({'stock': 'Stock cannot be negative'})
+    
+    def save(self, *args, **kwargs):
+        """Call clean before saving."""
+        self.full_clean()
+        super().save(*args, **kwargs)
+```
+
+## View Design
+
+### Use Class-Based Views for Complex Logic
+
+```python
+from django.views.generic import ListView, DetailView, CreateView
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+
+# Good: CBV for complex views
+class ProductListView(LoginRequiredMixin, ListView):
+    model = Product
+    template_name = 'products/list.html'
+    context_object_name = 'products'
+    paginate_by = 20
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        queryset = queryset.select_related('category')
+        
+        # Apply filters
+        if search := self.request.GET.get('search'):
+            queryset = queryset.filter(name__icontains=search)
+        
+        return queryset.filter(is_active=True)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['categories'] = Category.objects.all()
+        return context
+
+# Good: FBV for simple views
+from django.shortcuts import render
+
+def hello_world(request):
+    """Simple greeting view."""
+    return render(request, 'hello.html', {'message': 'Hello, World!'})
+```
+
+### Keep Views Thin
+
+```python
+# Good: Views handle requests/responses only
+class OrderCreateView(LoginRequiredMixin, CreateView):
+    model = Order
+    form_class = OrderForm
+    
+    def form_valid(self, form):
+        form.instance.customer = self.request.user
+        response = super().form_valid(form)
+        
+        # Business logic in model method
+        self.object.process_payment()
+        
+        return response
+
+# Bad: Business logic in views
+def create_order(request):
+    if request.method == 'POST':
+        # Too much business logic here
+        order = Order(customer=request.user, ...)
+        if order.total > 0:
+            # Calculate shipping
+            # Apply discounts
+            # Process payment
+            # Send emails
+            # Update inventory
+        order.save()
+```
+
+## Dependency Management
+
+### App-Specific Requirements
+
+Each app should declare its own dependencies:
+
+```txt superapp/apps/my_app/requirements.txt
+# API and data processing
+requests>=2.28.0,<3.0.0
+pandas>=1.5.0,<2.0.0
+
+# Background tasks
+celery>=5.2.0,<6.0.0
+redis>=4.3.0,<5.0.0
+
+# Additional utilities
+python-dateutil>=2.8.0
+pillow>=9.0.0
+```
+
+<Warning>
+  Pin dependencies to specific versions or version ranges to ensure reproducibility and prevent unexpected breaking changes.
+</Warning>
+
+### Version Pinning Strategies
+
+```txt
+# Production: Exact versions
+Django==4.2.7
+djangorestframework==3.14.0
+
+# Development: Compatible versions
+pytest>=7.4.0,<8.0.0
+black~=23.11.0
+
+# Avoid: Unpinned versions (can break builds)
+requests  # Bad: No version specified
+pandas>=1.0.0  # Bad: Too broad range
+```
+
+### Managing Dependencies
+
+```bash
+# Install app-specific requirements during setup
+pip install -r superapp/apps/my_app/requirements.txt
+
+# Install all app requirements
+find superapp/apps -name "requirements.txt" -exec pip install -r {} \;
+
+# Generate locked requirements
+pip freeze > requirements-lock.txt
+```
+
+## Settings Integration
+
+### Extend Settings Cleanly
+
+```python superapp/apps/my_app/settings.py
+def extend_superapp_settings(main_settings):
+    # Register app
+    main_settings['INSTALLED_APPS'] += ['superapp.apps.my_app']
+    
+    # Add middleware if needed
+    if 'my_app.middleware.CustomMiddleware' not in main_settings.get('MIDDLEWARE', []):
+        main_settings['MIDDLEWARE'] += ['my_app.middleware.CustomMiddleware']
+    
+    # App-specific configuration
+    main_settings.setdefault('MY_APP_CONFIG', {})
+    main_settings['MY_APP_CONFIG'].update({
+        'feature_enabled': True,
+        'api_timeout': 30,
+        'cache_duration': 3600,
+    })
+    
+    # Add templates directory
+    main_settings['TEMPLATES'][0]['DIRS'] += [
+        'superapp/apps/my_app/templates'
+    ]
+```
+
+### Environment-Specific Settings
+
+```python
+import os
+
+def extend_superapp_settings(main_settings):
+    main_settings['INSTALLED_APPS'] += ['superapp.apps.my_app']
+    
+    # Use environment variables for sensitive data
+    main_settings['MY_APP_API_KEY'] = os.getenv('MY_APP_API_KEY')
+    main_settings['MY_APP_API_SECRET'] = os.getenv('MY_APP_API_SECRET')
+    
+    # Environment-specific configuration
+    if main_settings.get('DEBUG'):
+        main_settings['MY_APP_CACHE_ENABLED'] = False
+    else:
+        main_settings['MY_APP_CACHE_ENABLED'] = True
+```
+
+## Security Best Practices
+
+### Input Validation
+
+```python
+from django import forms
+from django.core.validators import MinValueValidator, MaxValueValidator
+
+class ProductForm(forms.ModelForm):
+    class Meta:
+        model = Product
+        fields = ['name', 'price', 'stock']
+    
+    def clean_price(self):
+        price = self.cleaned_data['price']
+        if price < 0:
+            raise forms.ValidationError("Price cannot be negative")
+        if price > 1000000:
+            raise forms.ValidationError("Price is unreasonably high")
+        return price
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        # Cross-field validation
+        return cleaned_data
+```
+
+### Protect Sensitive Data
+
+```python
+# Good: Use environment variables
+import os
+
+API_KEY = os.getenv('API_KEY')
+DATABASE_PASSWORD = os.getenv('DATABASE_PASSWORD')
+
+# Bad: Hardcoded secrets
+API_KEY = 'sk_live_12345...'  # Never do this!
+```
+
+### CSRF Protection
+
+```python
+# Good: Use Django's CSRF protection
+from django.views.decorators.csrf import csrf_protect
+
+@csrf_protect
+def submit_form(request):
+    if request.method == 'POST':
+        # Process form
+        pass
+    return render(request, 'form.html')
+
+# In templates
+# {% csrf_token %}
+```
+
+### SQL Injection Prevention
+
+```python
+# Good: Use ORM
+products = Product.objects.filter(category=user_input)
+
+# Good: Use parameterized queries when raw SQL is necessary
+from django.db import connection
+cursor = connection.cursor()
+cursor.execute("SELECT * FROM products WHERE category = %s", [user_input])
+
+# Bad: String interpolation (vulnerable to SQL injection)
+cursor.execute(f"SELECT * FROM products WHERE category = '{user_input}'")
+```
+
+## Performance Optimization
+
+### Query Optimization
+
+```python
+# Use select_related for foreign keys (single JOIN)
+orders = Order.objects.select_related('customer', 'shipping_address')
+
+# Use prefetch_related for reverse relations (separate queries)
+customers = Customer.objects.prefetch_related('orders', 'addresses')
+
+# Use only() to fetch specific fields
+products = Product.objects.only('id', 'name', 'price')
+
+# Use defer() to exclude fields
+products = Product.objects.defer('description', 'full_text')
+
+# Use iterator() for large querysets
+for product in Product.objects.iterator(chunk_size=1000):
+    process_product(product)
+```
+
+### Caching
+
+```python
+from django.core.cache import cache
+from django.views.decorators.cache import cache_page
+
+# Cache function results
+def get_popular_products():
+    cache_key = 'popular_products'
+    products = cache.get(cache_key)
+    
+    if products is None:
+        products = Product.objects.filter(
+            is_active=True
+        ).order_by('-views')[:10]
+        cache.set(cache_key, products, 3600)  # Cache for 1 hour
+    
+    return products
+
+# Cache views
+@cache_page(60 * 15)  # Cache for 15 minutes
+def product_list(request):
+    products = Product.objects.all()
+    return render(request, 'products/list.html', {'products': products})
+```
+
+### Database Indexes
+
+```python
+class Product(models.Model):
+    name = models.CharField(max_length=200, db_index=True)
+    sku = models.CharField(max_length=50, unique=True, db_index=True)
+    category = models.ForeignKey(Category, on_delete=models.CASCADE)
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['name', 'category']),
+            models.Index(fields=['-created_at']),
+        ]
+```
+
+### Background Tasks
+
+```python
+# Use Celery for time-consuming operations
+from celery import shared_task
+
+@shared_task
+def process_order(order_id):
+    """Process order in background."""
+    order = Order.objects.get(id=order_id)
+    order.process_payment()
+    order.send_confirmation_email()
+    order.update_inventory()
+
+# Call from views
+def create_order(request):
+    order = Order.objects.create(...)
+    
+    # Process in background instead of blocking request
+    process_order.delay(order.id)
+    
+    return redirect('order_success')
+```
+
+## Testing
+
+### Write Comprehensive Tests
+
+```python
+from django.test import TestCase
+from decimal import Decimal
+
+class ProductModelTest(TestCase):
+    def setUp(self):
+        self.product = Product.objects.create(
+            name='Test Product',
+            price=Decimal('99.99'),
+            stock=10
+        )
+    
+    def test_calculate_discount(self):
+        """Test discount calculation."""
+        discounted_price = self.product.calculate_discount(20)
+        self.assertEqual(discounted_price, Decimal('79.99'))
+    
+    def test_negative_stock_validation(self):
+        """Test that negative stock raises error."""
+        with self.assertRaises(ValidationError):
+            self.product.stock = -1
+            self.product.full_clean()
+```
+
+### Test Views
+
+```python
+from django.test import TestCase, Client
+from django.urls import reverse
+
+class ProductViewTest(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.product = Product.objects.create(name='Test', price=10)
+    
+    def test_product_list_view(self):
+        """Test product list displays correctly."""
+        response = self.client.get(reverse('product_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Test')
+    
+    def test_product_list_requires_login(self):
+        """Test login requirement."""
+        response = self.client.get(reverse('product_list'))
+        self.assertRedirects(response, '/login/?next=/products/')
+```
+
+## Error Handling
+
+### Use Django's Error Handling
+
+```python
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.http import Http404
+
+def get_product_or_404(product_id):
+    """Get product or raise 404."""
+    try:
+        return Product.objects.get(id=product_id)
+    except ObjectDoesNotExist:
+        raise Http404("Product not found")
+
+# Use get_object_or_404 shortcut
+from django.shortcuts import get_object_or_404
+
+def product_detail(request, product_id):
+    product = get_object_or_404(Product, id=product_id)
+    return render(request, 'product.html', {'product': product})
+```
+
+### Custom Error Pages
+
+```python
+# Create custom error handlers
+def handler404(request, exception):
+    return render(request, '404.html', status=404)
+
+def handler500(request):
+    return render(request, '500.html', status=500)
+```
+
+## Signals for Decoupling
+
+```python
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
+@receiver(post_save, sender=Order)
+def order_created(sender, instance, created, **kwargs):
+    """Send notification when order is created."""
+    if created:
+        # Send email
+        send_order_confirmation_email.delay(instance.id)
+        
+        # Log event
+        logger.info(f"Order {instance.id} created for {instance.customer}")
+        
+        # Update analytics
+        track_order_event(instance)
+```
+
+## Documentation
+
+### Docstrings
+
+```python
+def calculate_shipping_cost(weight, distance, shipping_method='standard'):
+    """
+    Calculate shipping cost based on weight and distance.
+    
+    Args:
+        weight (float): Package weight in kg
+        distance (float): Shipping distance in km
+        shipping_method (str): One of 'standard', 'express', 'overnight'
+    
+    Returns:
+        Decimal: Calculated shipping cost
+    
+    Raises:
+        ValueError: If weight or distance is negative
+        
+    Examples:
+        >>> calculate_shipping_cost(2.5, 100)
+        Decimal('15.00')
+    """
+    if weight < 0 or distance < 0:
+        raise ValueError("Weight and distance must be positive")
+    
+    # Implementation
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Creating Apps" icon="plus" href="/guides/creating-apps">
+    Apply these practices when creating new apps
+  </Card>
+  
+  <Card title="Admin Integration" icon="user-shield" href="/guides/admin-integration">
+    Follow best practices for admin development
+  </Card>
+  
+  <Card title="Templates" icon="file-code" href="/guides/templates">
+    Use templates that follow best practices
+  </Card>
+  
+  <Card title="API Reference" icon="book" href="/api/settings">
+    View the complete API reference
+  </Card>
+</CardGroup>

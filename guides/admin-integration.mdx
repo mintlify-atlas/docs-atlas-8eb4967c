@@ -1,0 +1,384 @@
+---
+title: Admin Integration
+description: Integrate Django admin with SuperApp using django-unfold and custom navigation
+---
+
+Django SuperApp uses [django-unfold](https://unfoldadmin.com/) to provide a modern, customizable admin interface with sidebar navigation and enhanced features.
+
+## Using django-unfold with SuperApp
+
+SuperApp provides a centralized admin site and base admin classes that all apps should use for consistent admin integration.
+
+### SuperAppModelAdmin Pattern
+
+All model admin classes should inherit from `SuperAppModelAdmin`, which is based on `unfold.admin.ModelAdmin`:
+
+```python superapp/apps/sample_app/admin/sample_model.py
+from superapp.apps.admin_portal.admin import SuperAppModelAdmin
+from superapp.apps.admin_portal.sites import superapp_admin_site
+from superapp.apps.sample_app.models import SampleModel
+from django.contrib import admin
+
+@admin.register(SampleModel, site=superapp_admin_site)
+class SampleModelAdmin(SuperAppModelAdmin):
+    list_display = ['slug', 'name', 'created_at', 'updated_at']
+    search_fields = ['name', 'slug']
+    autocomplete_fields = ['related_model']
+```
+
+<Note>
+  Always register models with `superapp_admin_site` instead of the default Django admin site. This ensures proper integration with the SuperApp admin portal.
+</Note>
+
+## Admin File Organization
+
+Admin configurations must follow a specific structure for proper organization and maintenance.
+
+### Directory Structure
+
+```
+superapp/apps/my_app/
+├── admin/
+│   ├── __init__.py
+│   ├── user.py
+│   ├── product.py
+│   └── order.py
+└── models.py
+```
+
+<Warning>
+  Admins must live in `superapp/apps/<app_name>/admin/<model_name_slug>.py`. Do not place admin configurations directly in `admin.py` at the app root.
+</Warning>
+
+### Admin File Naming
+
+Admin files should be named after the model they configure, using snake_case:
+
+- `user.py` for `User` model
+- `product_category.py` for `ProductCategory` model
+- `order_item.py` for `OrderItem` model
+
+## Registering Models with superapp_admin_site
+
+All models must be registered with the centralized `superapp_admin_site` for proper integration.
+
+### Basic Registration
+
+```python
+from django.contrib import admin
+from superapp.apps.admin_portal.admin import SuperAppModelAdmin
+from superapp.apps.admin_portal.sites import superapp_admin_site
+from .models import Product
+
+@admin.register(Product, site=superapp_admin_site)
+class ProductAdmin(SuperAppModelAdmin):
+    list_display = ['name', 'price', 'stock', 'is_active']
+    list_filter = ['is_active', 'created_at']
+    search_fields = ['name', 'description']
+```
+
+### Using Autocomplete Fields
+
+Prefer `autocomplete_fields` for `ForeignKey` and `ManyToManyField` relationships:
+
+```python
+@admin.register(Order, site=superapp_admin_site)
+class OrderAdmin(SuperAppModelAdmin):
+    list_display = ['order_number', 'customer', 'total', 'status']
+    search_fields = ['order_number', 'customer__email']
+    
+    # Use autocomplete for better UX with large datasets
+    autocomplete_fields = ['customer', 'products']
+    
+    list_filter = ['status', 'created_at']
+```
+
+<Tip>
+  Autocomplete fields provide a better user experience when dealing with large datasets and prevent slow page loads from loading thousands of options.
+</Tip>
+
+### Inline Admin Configuration
+
+```python
+from django.contrib import admin
+
+class OrderItemInline(admin.TabularInline):
+    model = OrderItem
+    extra = 1
+    autocomplete_fields = ['product']
+
+@admin.register(Order, site=superapp_admin_site)
+class OrderAdmin(SuperAppModelAdmin):
+    list_display = ['order_number', 'customer', 'total']
+    inlines = [OrderItemInline]
+    autocomplete_fields = ['customer']
+```
+
+## Admin Navigation Configuration
+
+Each app configures its sidebar navigation through the `UNFOLD['SIDEBAR']['navigation']` setting in its `settings.py`.
+
+### Basic Navigation Setup
+
+```python superapp/apps/sample_app/settings.py
+from django.utils.translation import gettext_lazy as _
+from django.urls import reverse_lazy
+
+def extend_superapp_settings(main_settings):
+    main_settings['INSTALLED_APPS'] += ['superapp.apps.sample_app']
+    
+    main_settings['UNFOLD']['SIDEBAR']['navigation'] = [
+        {
+            "title": _("Sample App"),
+            "icon": "extension",
+            "items": [
+                {
+                    "title": lambda request: _("Sample Models"),
+                    "icon": "table_rows",
+                    "link": reverse_lazy("admin:sample_app_samplemodel_changelist"),
+                    "permission": lambda request: request.user.has_perm("sample_app.view_samplemodel"),
+                },
+            ]
+        },
+    ]
+```
+
+### Navigation with Multiple Models
+
+```python
+from django.utils.translation import gettext_lazy as _
+from django.urls import reverse_lazy
+
+def extend_superapp_settings(main_settings):
+    main_settings['INSTALLED_APPS'] += ['superapp.apps.ecommerce']
+    
+    main_settings['UNFOLD']['SIDEBAR']['navigation'] = [
+        {
+            "title": _("E-Commerce"),
+            "icon": "shopping_cart",
+            "items": [
+                {
+                    "title": lambda request: _("Products"),
+                    "icon": "inventory_2",
+                    "link": reverse_lazy("admin:ecommerce_product_changelist"),
+                    "permission": lambda request: request.user.has_perm("ecommerce.view_product"),
+                },
+                {
+                    "title": lambda request: _("Orders"),
+                    "icon": "receipt_long",
+                    "link": reverse_lazy("admin:ecommerce_order_changelist"),
+                    "permission": lambda request: request.user.has_perm("ecommerce.view_order"),
+                },
+                {
+                    "title": lambda request: _("Customers"),
+                    "icon": "people",
+                    "link": reverse_lazy("admin:ecommerce_customer_changelist"),
+                    "permission": lambda request: request.user.has_perm("ecommerce.view_customer"),
+                },
+            ]
+        },
+    ]
+```
+
+### Navigation with Nested Groups
+
+```python
+def extend_superapp_settings(main_settings):
+    main_settings['INSTALLED_APPS'] += ['superapp.apps.content']
+    
+    main_settings['UNFOLD']['SIDEBAR']['navigation'] = [
+        {
+            "title": _("Content Management"),
+            "icon": "article",
+            "items": [
+                {
+                    "title": lambda request: _("Blog"),
+                    "icon": "edit_note",
+                    "items": [
+                        {
+                            "title": lambda request: _("Posts"),
+                            "link": reverse_lazy("admin:content_post_changelist"),
+                            "permission": lambda request: request.user.has_perm("content.view_post"),
+                        },
+                        {
+                            "title": lambda request: _("Categories"),
+                            "link": reverse_lazy("admin:content_category_changelist"),
+                            "permission": lambda request: request.user.has_perm("content.view_category"),
+                        },
+                    ]
+                },
+                {
+                    "title": lambda request: _("Pages"),
+                    "icon": "description",
+                    "link": reverse_lazy("admin:content_page_changelist"),
+                    "permission": lambda request: request.user.has_perm("content.view_page"),
+                },
+            ]
+        },
+    ]
+```
+
+## Available Icons
+
+Django Unfold uses Material Design Icons. Common icons include:
+
+- `dashboard` - Dashboard/home
+- `people` - Users/customers
+- `shopping_cart` - E-commerce
+- `inventory_2` - Products/items
+- `receipt_long` - Orders/transactions
+- `settings` - Configuration
+- `article` - Content/blog
+- `description` - Pages/documents
+- `table_rows` - Data tables
+- `extension` - Apps/plugins
+- `security` - Authentication/security
+
+<Tip>
+  View the full list of available icons at [Material Design Icons](https://fonts.google.com/icons).
+</Tip>
+
+## Permission-Based Navigation
+
+Navigation items can be conditionally displayed based on user permissions:
+
+```python
+{
+    "title": lambda request: _("Admin Only"),
+    "icon": "admin_panel_settings",
+    "link": reverse_lazy("admin:auth_user_changelist"),
+    # Only show to superusers
+    "permission": lambda request: request.user.is_superuser,
+}
+```
+
+### Complex Permission Logic
+
+```python
+{
+    "title": lambda request: _("Reports"),
+    "icon": "assessment",
+    "link": reverse_lazy("admin:reports_dashboard"),
+    "permission": lambda request: (
+        request.user.has_perm("reports.view_report") and
+        request.user.groups.filter(name="Managers").exists()
+    ),
+}
+```
+
+## Advanced Admin Features
+
+### Custom Actions
+
+```python
+@admin.register(Product, site=superapp_admin_site)
+class ProductAdmin(SuperAppModelAdmin):
+    list_display = ['name', 'price', 'is_active']
+    actions = ['activate_products', 'deactivate_products']
+    
+    @admin.action(description='Activate selected products')
+    def activate_products(self, request, queryset):
+        queryset.update(is_active=True)
+        self.message_user(request, f"{queryset.count()} products activated.")
+    
+    @admin.action(description='Deactivate selected products')
+    def deactivate_products(self, request, queryset):
+        queryset.update(is_active=False)
+        self.message_user(request, f"{queryset.count()} products deactivated.")
+```
+
+### Custom Filters
+
+```python
+from django.contrib import admin
+
+class PriceRangeFilter(admin.SimpleListFilter):
+    title = 'price range'
+    parameter_name = 'price'
+    
+    def lookups(self, request, model_admin):
+        return (
+            ('0-50', 'Under $50'),
+            ('50-100', '$50 - $100'),
+            ('100+', 'Over $100'),
+        )
+    
+    def queryset(self, request, queryset):
+        if self.value() == '0-50':
+            return queryset.filter(price__lt=50)
+        if self.value() == '50-100':
+            return queryset.filter(price__gte=50, price__lte=100)
+        if self.value() == '100+':
+            return queryset.filter(price__gt=100)
+
+@admin.register(Product, site=superapp_admin_site)
+class ProductAdmin(SuperAppModelAdmin):
+    list_filter = [PriceRangeFilter, 'is_active']
+```
+
+## Complete Example
+
+Here's a complete example combining all the concepts:
+
+```python superapp/apps/shop/admin/product.py
+from django.contrib import admin
+from django.utils.translation import gettext_lazy as _
+from superapp.apps.admin_portal.admin import SuperAppModelAdmin
+from superapp.apps.admin_portal.sites import superapp_admin_site
+from superapp.apps.shop.models import Product, ProductImage
+
+class ProductImageInline(admin.TabularInline):
+    model = ProductImage
+    extra = 1
+    fields = ['image', 'alt_text', 'is_primary']
+
+@admin.register(Product, site=superapp_admin_site)
+class ProductAdmin(SuperAppModelAdmin):
+    list_display = ['name', 'sku', 'price', 'stock', 'is_active', 'created_at']
+    list_filter = ['is_active', 'category', 'created_at']
+    search_fields = ['name', 'sku', 'description']
+    autocomplete_fields = ['category', 'supplier']
+    inlines = [ProductImageInline]
+    
+    fieldsets = (
+        (_('Basic Information'), {
+            'fields': ('name', 'sku', 'description')
+        }),
+        (_('Pricing & Inventory'), {
+            'fields': ('price', 'stock', 'cost')
+        }),
+        (_('Organization'), {
+            'fields': ('category', 'supplier', 'tags')
+        }),
+        (_('Status'), {
+            'fields': ('is_active',)
+        }),
+    )
+    
+    actions = ['activate_products', 'deactivate_products']
+    
+    @admin.action(description='Activate selected products')
+    def activate_products(self, request, queryset):
+        updated = queryset.update(is_active=True)
+        self.message_user(request, f"{updated} products activated.")
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Creating Apps" icon="plus" href="/guides/creating-apps">
+    Learn how to create new SuperApp apps
+  </Card>
+  
+  <Card title="Templates" icon="file-code" href="/guides/templates">
+    Use templates to bootstrap admin configurations
+  </Card>
+  
+  <Card title="Best Practices" icon="star" href="/guides/best-practices">
+    Follow best practices for admin development
+  </Card>
+  
+  <Card title="Django Unfold Docs" icon="external-link" href="https://unfoldadmin.com/">
+    Explore the django-unfold documentation
+  </Card>
+</CardGroup>

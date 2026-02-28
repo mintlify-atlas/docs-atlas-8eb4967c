@@ -1,0 +1,273 @@
+---
+title: 'Apps API'
+description: 'API reference for Django SuperApp application configuration'
+---
+
+## Overview
+
+The Apps API provides the core Django application configuration for Django SuperApp. It uses Django's standard `AppConfig` class to integrate with Django's application registry.
+
+## AppConfig
+
+The default Django application configuration for Django SuperApp.
+
+```python
+from django_superapp.apps import AppConfig
+```
+
+### Class Definition
+
+The `AppConfig` class is defined in `apps.py` (lines 3-5):
+
+```python apps.py
+from django.apps import AppConfig
+
+class AppConfig(AppConfig):
+    name = 'django_superapp'
+    default = True
+```
+
+### Attributes
+
+<ParamField path="name" type="str" default="'django_superapp'">
+  The full Python path to the application. This is used by Django to identify the app in the application registry.
+</ParamField>
+
+<ParamField path="default" type="bool" default="True">
+  Indicates this is the default configuration for the `django_superapp` application. When set to `True`, Django will automatically use this AppConfig when the app is added to `INSTALLED_APPS`.
+</ParamField>
+
+## Installation
+
+To use Django SuperApp in your Django project, add it to your `INSTALLED_APPS`:
+
+```python settings.py
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    
+    # Django SuperApp
+    'django_superapp',
+    
+    # Your other apps
+]
+```
+
+<Note>
+  Because `default = True` is set in the AppConfig, you don't need to use the full path `django_superapp.apps.AppConfig`. Django will automatically find and use this configuration.
+</Note>
+
+## How It Works
+
+Django SuperApp's AppConfig follows Django's standard application configuration pattern:
+
+1. **Application Discovery**: When Django starts, it reads the `INSTALLED_APPS` setting
+2. **AppConfig Loading**: Django looks for an `apps.py` file in each installed app
+3. **Default Configuration**: If `default = True`, Django automatically uses this AppConfig
+4. **Registration**: The app is registered in Django's application registry
+
+## Integration with Django
+
+### Django Application Registry
+
+Once installed, Django SuperApp is registered in Django's application registry and can be accessed programmatically:
+
+```python
+from django.apps import apps
+
+# Get the AppConfig instance
+superapp_config = apps.get_app_config('django_superapp')
+
+print(superapp_config.name)     # Output: 'django_superapp'
+print(superapp_config.verbose_name)  # Output: 'Django Superapp'
+```
+
+### App Lifecycle Hooks
+
+While the current implementation is minimal, AppConfig can be extended to add lifecycle hooks:
+
+```python
+from django.apps import AppConfig
+
+class AppConfig(AppConfig):
+    name = 'django_superapp'
+    default = True
+    
+    def ready(self):
+        """Called when Django starts."""
+        # Import signal handlers
+        # Register checks
+        # Perform initialization
+        pass
+```
+
+<Note>
+  The `ready()` method is called when Django starts. It's the appropriate place to register signal handlers, perform initialization, or register system checks.
+</Note>
+
+## SuperApp Structure
+
+Django SuperApp uses a modular architecture where each "SuperApp" is a module within a package:
+
+```
+project/
+├── settings.py
+├── urls.py
+├── superapp_apps/
+│   ├── __init__.py
+│   ├── auth_app/
+│   │   ├── __init__.py
+│   │   ├── apps.py         # Individual app config
+│   │   ├── models.py
+│   │   ├── views.py
+│   │   ├── urls.py         # Auto-discovered by django_superapp
+│   │   └── settings.py     # Auto-discovered by django_superapp
+│   ├── api_app/
+│   │   ├── __init__.py
+│   │   ├── apps.py
+│   │   ├── urls.py
+│   │   └── settings.py
+│   └── dashboard/
+│       ├── __init__.py
+│       ├── apps.py
+│       ├── urls.py
+│       └── settings.py
+└── django_superapp/        # This package
+    ├── __init__.py
+    ├── apps.py            # Main AppConfig
+    ├── settings.py        # Settings discovery
+    └── urls.py            # URL discovery
+```
+
+## Creating a SuperApp Module
+
+Each SuperApp module should follow Django's standard app structure:
+
+### 1. Create the Module
+
+```python superapp_apps/my_app/__init__.py
+default_app_config = 'superapp_apps.my_app.apps.MyAppConfig'
+```
+
+### 2. Define AppConfig
+
+```python superapp_apps/my_app/apps.py
+from django.apps import AppConfig
+
+class MyAppConfig(AppConfig):
+    name = 'superapp_apps.my_app'
+    verbose_name = 'My Application'
+    default_auto_field = 'django.db.models.BigAutoField'
+    
+    def ready(self):
+        # Import signals, register checks, etc.
+        from . import signals
+```
+
+### 3. Add to INSTALLED_APPS
+
+```python settings.py
+INSTALLED_APPS = [
+    # ...
+    'django_superapp',
+    'superapp_apps.my_app',
+    # ...
+]
+```
+
+### 4. Define Settings and URLs
+
+Create `settings.py` and `urls.py` in your SuperApp module. These will be automatically discovered by Django SuperApp's extension functions:
+
+```python superapp_apps/my_app/settings.py
+def extend_superapp_settings(main_settings):
+    main_settings.MY_APP_ENABLED = True
+```
+
+```python superapp_apps/my_app/urls.py
+from django.urls import path
+from . import views
+
+def extend_superapp_urlpatterns(main_urlpatterns):
+    main_urlpatterns.append(
+        path('my-app/', views.index, name='my_app_index')
+    )
+```
+
+## Best Practices
+
+### 1. Use Descriptive Names
+
+```python
+class MyAppConfig(AppConfig):
+    name = 'superapp_apps.my_app'
+    verbose_name = 'My Descriptive Application Name'
+    label = 'my_app'  # Used for identifying the app
+```
+
+### 2. Initialize in ready()
+
+```python
+class MyAppConfig(AppConfig):
+    name = 'superapp_apps.my_app'
+    
+    def ready(self):
+        # Import signal handlers
+        from . import signals
+        
+        # Register system checks
+        from django.core.checks import register
+        from .checks import check_my_app_config
+        register(check_my_app_config)
+```
+
+### 3. Avoid Circular Imports
+
+<Note type="warning">
+  Be careful not to import models at the module level in `apps.py`. Always import models inside the `ready()` method to avoid circular import issues.
+</Note>
+
+```python
+# ❌ Bad: Imports at module level
+from .models import MyModel
+
+class MyAppConfig(AppConfig):
+    name = 'superapp_apps.my_app'
+
+# ✅ Good: Imports in ready()
+class MyAppConfig(AppConfig):
+    name = 'superapp_apps.my_app'
+    
+    def ready(self):
+        from .models import MyModel
+        # Use MyModel here
+```
+
+### 4. Document Dependencies
+
+```python
+class MyAppConfig(AppConfig):
+    """
+    My Application configuration.
+    
+    Dependencies:
+    - django.contrib.auth
+    - django.contrib.contenttypes
+    - rest_framework (if API features are used)
+    
+    Settings:
+    - MY_APP_ENABLED: Enable/disable the app features
+    - MY_APP_API_KEY: API key for external service
+    """
+    name = 'superapp_apps.my_app'
+    verbose_name = 'My Application'
+```
+
+## Related APIs
+
+- [Settings API](/api/settings) - For extending Django settings with SuperApp modules
+- [URLs API](/api/urls) - For extending URL patterns with SuperApp modules

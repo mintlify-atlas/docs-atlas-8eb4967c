@@ -1,0 +1,174 @@
+---
+title: bootstrap-app
+description: Create a new app inside a Django SuperApp project
+---
+
+## Overview
+
+The `bootstrap-app` command creates a new Django app within an existing SuperApp project by copying a template repository. This command must be run from the `superapp/apps` directory.
+
+## Syntax
+
+```bash
+django_superapp bootstrap-app [OPTIONS] TARGET_DIRECTORY
+```
+
+## Parameters
+
+<ParamField path="TARGET_DIRECTORY" type="string" required>
+  The directory name for the new app. The directory name will also be used as the app name.
+</ParamField>
+
+## Options
+
+<ParamField path="--template-repo" type="string">
+  The GitHub repository URL to use as the app template. Must be a valid GitHub HTTPS or SSH URL.
+  
+  **Accepted formats:**
+  - HTTPS: `https://github.com/owner/repo`
+  - SSH: `git@github.com:owner/repo.git`
+  
+  <Note>
+    Unlike `bootstrap-project`, this option has no default value. You must specify a template repository.
+  </Note>
+</ParamField>
+
+## Directory Requirement
+
+<Warning>
+  This command **must** be run from within the `superapp/apps` directory of your project. If you run it from any other location, you'll receive an error.
+</Warning>
+
+## How It Works
+
+1. Validates that the current directory ends with `superapp/apps`
+2. Validates the template repository URL format (if provided)
+3. Uses [Copier](https://copier.readthedocs.io/) to copy the template repository
+4. Sets the `app_name` variable to the basename of the target directory
+5. Creates the app structure in the specified location
+
+## Examples
+
+### Basic Usage
+
+First, navigate to the apps directory:
+
+```bash
+cd my-project/superapp/apps
+```
+
+Then create a new app:
+
+```bash
+django_superapp bootstrap-app --template-repo https://github.com/myorg/app-template my-app
+```
+
+### Creating Multiple Apps
+
+Create multiple apps in sequence:
+
+```bash
+cd my-project/superapp/apps
+django_superapp bootstrap-app --template-repo https://github.com/myorg/app-template users
+django_superapp bootstrap-app --template-repo https://github.com/myorg/app-template products
+django_superapp bootstrap-app --template-repo https://github.com/myorg/app-template orders
+```
+
+### Using SSH Authentication
+
+For private template repositories:
+
+```bash
+django_superapp bootstrap-app --template-repo git@github.com:myorg/private-app-template.git my-app
+```
+
+## Error Handling
+
+### Wrong Directory Error
+
+If you run the command outside of `superapp/apps`, you'll see:
+
+```
+Error: You must run this command inside the 'superapp/apps' directory.
+```
+
+**Solution**: Navigate to the correct directory:
+
+```bash
+cd path/to/project/superapp/apps
+```
+
+### Invalid Repository URL
+
+If the repository URL is invalid:
+
+```
+Error: The repository URL must be a valid GitHub HTTPS or SSH URL.
+```
+
+**Solution**: Use a properly formatted GitHub URL:
+- HTTPS: `https://github.com/owner/repo`
+- SSH: `git@github.com:owner/repo.git`
+
+## Template Variables
+
+The command automatically passes the following variables to the template:
+
+- `app_name`: Extracted from the basename of the target directory
+
+## Project Structure
+
+After creating an app, your project structure will look like:
+
+```
+my-project/
+└── superapp/
+    └── apps/
+        ├── my-app/          # Your new app
+        │   ├── models.py
+        │   ├── views.py
+        │   └── ...
+        └── another-app/     # Other apps
+```
+
+## After Creating an App
+
+Once your app is created:
+
+1. Register the app in your Django settings:
+   ```python
+   INSTALLED_APPS = [
+       # ...
+       'superapp.apps.my_app',
+   ]
+   ```
+
+2. Create and run migrations if the app includes models:
+   ```bash
+   python manage.py makemigrations
+   python manage.py migrate
+   ```
+
+3. Add URL patterns if needed:
+   ```python
+   # In your main urls.py
+   urlpatterns = [
+       path('my-app/', include('superapp.apps.my_app.urls')),
+   ]
+   ```
+
+## Related Commands
+
+<CardGroup cols={2}>
+  <Card title="bootstrap-project" icon="folder-plus" href="/cli/bootstrap-project">
+    Create a new SuperApp project first
+  </Card>
+  
+  <Card title="pull-template" icon="download" href="/cli/pull-template">
+    Update your app with template changes
+  </Card>
+</CardGroup>
+
+## Source Reference
+
+Implementation: [main.py:47-66](https://github.com/django-superapp/django-superapp/blob/main/src/django_superapp/cli/main.py#L47-L66)

@@ -1,0 +1,123 @@
+---
+title: 'Settings API'
+description: 'API reference for Django SuperApp settings management'
+---
+
+## Overview
+
+The Settings API provides functionality to dynamically discover and load settings from SuperApp modules. It enables modular configuration by allowing each SuperApp to define its own settings that extend the main application settings.
+
+## extend_superapp_settings
+
+Automatically discovers and loads settings from all SuperApp modules within a package.
+
+```python
+from django_superapp.settings import extend_superapp_settings
+
+extend_superapp_settings(main_settings, superapp_apps)
+```
+
+### Parameters
+
+<ParamField path="main_settings" type="module" required>
+  The main Django settings module to be extended. This is typically your project's settings module object.
+</ParamField>
+
+<ParamField path="superapp_apps" type="module" required>
+  The package containing your SuperApp modules. The function will iterate through all modules in this package to discover settings.
+</ParamField>
+
+### Implementation Details
+
+The function performs the following operations (lines 9-21 of `settings.py`):
+
+1. **Module Discovery**: Uses `pkgutil.iter_modules()` to iterate through all modules in the `superapp_apps` package
+2. **Settings Module Loading**: For each discovered module, attempts to import a `settings` submodule (e.g., `superapp_apps.module_name.settings`)
+3. **Graceful Fallback**: If a module doesn't have a settings submodule, it's silently skipped
+4. **Extension Hook**: If the settings module has an `extend_superapp_settings` function, it's called with the main settings object
+5. **Error Handling**: Re-raises any import errors that aren't related to missing settings modules
+
+### Usage Example
+
+```python settings.py
+import superapp_apps
+from django_superapp.settings import extend_superapp_settings
+
+# Your existing Django settings
+DEBUG = True
+ALLOWED_HOSTS = []
+
+# Extend with SuperApp settings
+extend_superapp_settings(
+    main_settings=__import__(__name__),
+    superapp_apps=superapp_apps
+)
+```
+
+### SuperApp Module Structure
+
+Each SuperApp module can define its own settings by creating a `settings.py` file:
+
+```python superapp_apps/my_app/settings.py
+def extend_superapp_settings(main_settings):
+    """Extend the main settings with app-specific configuration."""
+    
+    # Add to existing lists
+    if not hasattr(main_settings, 'MY_APP_CONFIG'):
+        main_settings.MY_APP_CONFIG = {}
+    
+    main_settings.MY_APP_CONFIG['feature_enabled'] = True
+    
+    # Modify INSTALLED_APPS
+    if hasattr(main_settings, 'INSTALLED_APPS'):
+        if 'my_app.dependencies' not in main_settings.INSTALLED_APPS:
+            main_settings.INSTALLED_APPS.append('my_app.dependencies')
+```
+
+<Note>
+  The `extend_superapp_settings` hook in each SuperApp module receives the main settings object and can modify it directly. This allows for dynamic configuration based on the app's requirements.
+</Note>
+
+### Return Value
+
+<ResponseField name="return" type="None">
+  This function modifies the `main_settings` object in-place and does not return a value.
+</ResponseField>
+
+### Error Handling
+
+The function handles errors as follows:
+
+- **Missing Settings Module**: If a SuperApp doesn't have a `settings.py` file, the module is skipped silently
+- **Import Errors**: Any import errors that aren't related to missing settings modules are re-raised
+- **Logging**: Uses Python's logging framework to log issues (via `logger` at module level)
+
+### Best Practices
+
+1. **Idempotency**: Ensure your `extend_superapp_settings` function is idempotent and can be called multiple times safely
+2. **Conditional Logic**: Check for existing settings before modifying to avoid conflicts
+3. **Naming Conventions**: Prefix your app-specific settings with your app name to avoid collisions
+4. **Documentation**: Document any settings your SuperApp adds in your app's documentation
+
+### Example: Multiple SuperApps
+
+```python
+# Project structure:
+# superapp_apps/
+#   ├── auth_app/
+#   │   └── settings.py
+#   ├── api_app/
+#   │   └── settings.py
+#   └── dashboard/
+#       └── settings.py
+
+# In your main settings.py:
+import superapp_apps
+from django_superapp.settings import extend_superapp_settings
+
+# This will automatically discover and load settings from:
+# - superapp_apps.auth_app.settings
+# - superapp_apps.api_app.settings  
+# - superapp_apps.dashboard.settings
+extend_superapp_settings(__import__(__name__), superapp_apps)
+```

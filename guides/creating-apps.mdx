@@ -1,0 +1,255 @@
+---
+title: Creating Apps
+description: Learn how to create and structure apps in Django SuperApp
+---
+
+Django SuperApp enables rapid development through pre-built standalone apps. Each app has its own settings and URLs that are automatically integrated into the main project.
+
+## Using the bootstrap-app Command
+
+<Steps>
+  <Step title="Navigate to the apps directory">
+    Change to your project's apps directory:
+    
+    ```bash
+    cd superapp/apps
+    ```
+    
+    <Warning>
+      The `bootstrap-app` command must be run from inside the `superapp/apps` directory. Running it from any other location will result in an error.
+    </Warning>
+  </Step>
+
+  <Step title="Run the bootstrap command">
+    Create a new app using a template repository:
+    
+    ```bash
+    django_superapp bootstrap-app \
+        --template-repo https://github.com/django-superapp/django-superapp-sample-app \
+        ./my_app
+    ```
+    
+    <Tip>
+      You can use any compatible template repository. See the [Templates guide](/guides/templates) for more information on available templates.
+    </Tip>
+  </Step>
+
+  <Step title="Install app dependencies">
+    If your app has specific requirements, install them:
+    
+    ```bash
+    cd my_app
+    pip install -r requirements.txt
+    ```
+  </Step>
+</Steps>
+
+## App Structure Requirements
+
+Each SuperApp app follows a consistent structure that enables automatic integration:
+
+```
+superapp/apps/my_app/
+├── __init__.py
+├── settings.py          # App-specific settings
+├── urls.py             # App URL patterns
+├── requirements.txt    # App dependencies
+├── models.py
+├── views.py
+├── admin/              # Admin configurations
+│   └── model_name.py
+└── templates/
+    └── my_app/
+```
+
+## Settings.py Structure
+
+Every app must include a `settings.py` file with an `extend_superapp_settings()` function. This function receives the main settings dictionary and can modify it to register the app.
+
+### Basic Settings Integration
+
+```python superapp/apps/sample_app/settings.py
+def extend_superapp_settings(main_settings):
+    # Register the app in INSTALLED_APPS
+    main_settings['INSTALLED_APPS'] += ['superapp.apps.sample_app']
+```
+
+### Adding Middleware
+
+```python
+def extend_superapp_settings(main_settings):
+    main_settings['INSTALLED_APPS'] += ['superapp.apps.my_app']
+    
+    # Add app-specific middleware
+    main_settings['MIDDLEWARE'] += [
+        'superapp.apps.my_app.middleware.CustomMiddleware',
+    ]
+```
+
+### Configuring App Settings
+
+```python
+def extend_superapp_settings(main_settings):
+    main_settings['INSTALLED_APPS'] += ['superapp.apps.my_app']
+    
+    # Add custom app configuration
+    main_settings['MY_APP_CONFIG'] = {
+        'feature_enabled': True,
+        'api_timeout': 30,
+    }
+```
+
+<Note>
+  The SuperApp system automatically discovers and calls the `extend_superapp_settings()` function from each app's settings.py file during initialization.
+</Note>
+
+## URLs.py Structure
+
+Apps define their URL patterns using an `extend_superapp_urlpatterns()` function that receives and modifies the main URL patterns list.
+
+### Basic URL Integration
+
+```python superapp/apps/sample_app/urls.py
+from django.urls import path
+from superapp.apps.sample_app.views import hello_world
+
+def extend_superapp_urlpatterns(main_urlpatterns):
+    main_urlpatterns += [
+        path('hello_world/', hello_world, name='sample_hello_world')
+    ]
+```
+
+### Using URL Namespaces
+
+```python
+from django.urls import path, include
+
+def extend_superapp_urlpatterns(main_urlpatterns):
+    app_patterns = [
+        path('dashboard/', views.dashboard, name='dashboard'),
+        path('settings/', views.settings, name='settings'),
+    ]
+    
+    main_urlpatterns += [
+        path('my-app/', include((app_patterns, 'my_app')))
+    ]
+```
+
+### Including API Endpoints
+
+```python
+from django.urls import path
+from rest_framework.routers import DefaultRouter
+from superapp.apps.my_app.views import api
+
+def extend_superapp_urlpatterns(main_urlpatterns):
+    router = DefaultRouter()
+    router.register(r'items', api.ItemViewSet)
+    
+    main_urlpatterns += [
+        path('api/my-app/', include(router.urls)),
+    ]
+```
+
+<Warning>
+  Always use the `+=` operator to append to `main_urlpatterns`. Do not reassign the list directly, as this will break the integration with other apps.
+</Warning>
+
+## Requirements.txt for App Dependencies
+
+Each app can specify its own Python dependencies that are separate from the main project requirements.
+
+### App-Specific Requirements
+
+```txt superapp/apps/my_app/requirements.txt
+# API and data processing
+requests>=2.28.0
+pandas>=1.5.0
+
+# Background tasks
+celery>=5.2.0
+redis>=4.3.0
+
+# Additional utilities
+python-dateutil>=2.8.0
+```
+
+<Tip>
+  Pin your dependencies to specific versions or use version ranges to ensure compatibility and reproducibility across environments.
+</Tip>
+
+### Installation During Deployment
+
+App requirements should be installed during deployment or development setup:
+
+```bash
+# Install all app requirements
+find superapp/apps -name "requirements.txt" -exec pip install -r {} \;
+
+# Or install specific app requirements
+pip install -r superapp/apps/my_app/requirements.txt
+```
+
+## Real-World Examples
+
+### Admin Portal App
+
+The Admin Portal app demonstrates a complete integration:
+
+```bash
+cd superapp/apps
+django_superapp bootstrap-app \
+    --template-repo https://github.com/django-superapp/django-superapp-admin-portal \
+    ./admin_portal
+```
+
+### Authentication App
+
+The Authentication app shows how to add user management:
+
+```bash
+cd superapp/apps
+django_superapp bootstrap-app \
+    --template-repo https://github.com/django-superapp/django-superapp-authentication \
+    ./authentication
+```
+
+## Key Principles
+
+<CardGroup cols={2}>
+  <Card title="Modular Structure" icon="cubes">
+    Organize code using Django apps within SuperApp for clear separation and reuse
+  </Card>
+  
+  <Card title="Independent Configuration" icon="gear">
+    Each app has its own settings.py and urls.py that extend the main configuration
+  </Card>
+  
+  <Card title="Automatic Discovery" icon="wand-magic-sparkles">
+    The SuperApp system automatically discovers and integrates app configurations
+  </Card>
+  
+  <Card title="Isolated Dependencies" icon="box">
+    Apps can specify their own requirements without affecting the main project
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Admin Integration" icon="user-shield" href="/guides/admin-integration">
+    Learn how to integrate Django admin with your apps
+  </Card>
+  
+  <Card title="Templates" icon="file-code" href="/guides/templates">
+    Explore template repositories and create custom templates
+  </Card>
+  
+  <Card title="Best Practices" icon="star" href="/guides/best-practices">
+    Follow best practices for app development
+  </Card>
+  
+  <Card title="API Reference" icon="book" href="/api/settings">
+    View the complete API reference
+  </Card>
+</CardGroup>

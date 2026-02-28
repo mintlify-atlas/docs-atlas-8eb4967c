@@ -1,0 +1,216 @@
+---
+title: pull-template
+description: Update local project with changes from the remote template repository
+---
+
+## Overview
+
+The `pull-template` command updates your local project or app with the latest changes from its remote template repository. This is useful for receiving upstream improvements, bug fixes, and new features from the template.
+
+## Syntax
+
+```bash
+django_superapp pull-template TARGET_DIRECTORY
+```
+
+## Parameters
+
+<ParamField path="TARGET_DIRECTORY" type="string" required>
+  The directory of the project or app to update. This directory must have been previously created using `bootstrap-project` or `bootstrap-app`, which stores template metadata.
+</ParamField>
+
+## How It Works
+
+1. Reads the `.copier-answers.yml` file in the target directory to identify the source template
+2. Fetches the latest changes from the remote template repository
+3. Updates local files while preserving your customizations when possible
+4. Uses the `--overwrite=True` flag to handle conflicts automatically
+
+<Note>
+  The command uses [Copier's update functionality](https://copier.readthedocs.io/), which intelligently merges template changes with your local modifications.
+</Note>
+
+## Examples
+
+### Update Current Project
+
+Update the project in the current directory:
+
+```bash
+django_superapp pull-template .
+```
+
+### Update Specific Project
+
+Update a project in a specific location:
+
+```bash
+django_superapp pull-template /path/to/my-project
+```
+
+### Update an App
+
+Update a specific app within your project:
+
+```bash
+django_superapp pull-template ./superapp/apps/my-app
+```
+
+### Update Multiple Apps
+
+Update multiple apps in sequence:
+
+```bash
+django_superapp pull-template ./superapp/apps/users
+django_superapp pull-template ./superapp/apps/products
+django_superapp pull-template ./superapp/apps/orders
+```
+
+## Update Behavior
+
+The command uses `--overwrite=True`, which means:
+
+- **Template files**: Updated to match the latest template version
+- **Generated files**: Regenerated based on current answers and template
+- **Custom files**: Preserved if not part of the template
+- **Modified template files**: May be overwritten (see backup recommendations below)
+
+## Before Updating
+
+<Warning>
+  Always commit your changes before pulling template updates. This allows you to review changes and revert if necessary.
+</Warning>
+
+### Recommended Workflow
+
+1. **Commit your current work**:
+   ```bash
+   git add .
+   git commit -m "Save work before template update"
+   ```
+
+2. **Pull template updates**:
+   ```bash
+   django_superapp pull-template .
+   ```
+
+3. **Review changes**:
+   ```bash
+   git diff
+   ```
+
+4. **Test your application**:
+   ```bash
+   python manage.py test
+   ```
+
+5. **Commit the updates**:
+   ```bash
+   git add .
+   git commit -m "Update from template"
+   ```
+
+## Handling Conflicts
+
+If you've heavily customized template files:
+
+1. **Back up your customizations** before updating
+2. **Run the update**
+3. **Manually merge** any custom logic that was overwritten
+4. **Use git diff** to see what changed
+
+### Example Conflict Resolution
+
+```bash
+# Save current state
+git add .
+git commit -m "Before template update"
+
+# Update from template
+django_superapp pull-template .
+
+# Review what changed
+git diff HEAD~1
+
+# If you need to restore specific files
+git checkout HEAD~1 -- path/to/file.py
+
+# Manually merge the necessary changes
+```
+
+## Template Metadata
+
+The command relies on `.copier-answers.yml` in your project directory. This file stores:
+
+- Source template repository URL
+- Template version/commit
+- Your answers to template questions
+
+Do not delete this file if you want to use `pull-template`.
+
+## Common Use Cases
+
+### Regular Maintenance
+
+Periodically update to receive:
+- Security patches
+- Bug fixes
+- New features
+- Best practice updates
+
+```bash
+# Monthly or quarterly
+django_superapp pull-template .
+```
+
+### After Template Changes
+
+When the template repository announces updates:
+
+```bash
+django_superapp pull-template .
+```
+
+### Synchronizing Multiple Projects
+
+Keep multiple projects aligned with the same template version:
+
+```bash
+django_superapp pull-template ~/projects/project-a
+django_superapp pull-template ~/projects/project-b
+django_superapp pull-template ~/projects/project-c
+```
+
+## Troubleshooting
+
+### Error: Cannot Find Template Information
+
+If the directory doesn't have `.copier-answers.yml`:
+
+```
+Error: No copier answers file found
+```
+
+**Solution**: This directory wasn't created with `bootstrap-project` or `bootstrap-app`. You cannot use `pull-template` on it.
+
+### Unexpected Overwrites
+
+If important customizations are being overwritten:
+
+**Solution**: Consider contributing your changes back to the template using [`push-template`](/cli/push-template), or maintain a fork of the template repository.
+
+## Related Commands
+
+<CardGroup cols={2}>
+  <Card title="push-template" icon="upload" href="/cli/push-template">
+    Push your changes back to the template
+  </Card>
+  
+  <Card title="bootstrap-project" icon="folder-plus" href="/cli/bootstrap-project">
+    Create a new project from a template
+  </Card>
+</CardGroup>
+
+## Source Reference
+
+Implementation: [main.py:69-77](https://github.com/django-superapp/django-superapp/blob/main/src/django_superapp/cli/main.py#L69-L77)
